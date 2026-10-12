@@ -1,0 +1,27 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '9.0.317'
+      - name: Publish EXE with pinned official Mihomo
+        shell: pwsh
+        run: ./build.ps1
+      - name: Compile integration fixtures without running them
+        shell: pwsh
+        run: dotnet build tests/CodexProxy.Tests/CodexProxy.Tests.csproj -c Release --nologo

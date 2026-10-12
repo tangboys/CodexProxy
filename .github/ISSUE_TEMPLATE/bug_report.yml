@@ -1,0 +1,22 @@
+name: Bug report / 问题反馈
+description: Report a reproducible problem without sharing credentials.
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: Versions / 版本
+      description: Windows, Codex Proxy, Codex desktop, and selected Mihomo versions.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps and result / 操作步骤与结果
+      description: Include expected behavior, actual behavior, and whether system proxy or TUN is enabled.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized details / 脱敏信息
+      description: Remove subscription URLs, node credentials, tokens, controller secrets, and personal paths before posting.

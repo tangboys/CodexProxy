@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex 专用代理"
+  short_description: "打开 C# 代理管理器，管理节点并为 Codex 桌面版或 CLI 启用专用代理"
+  default_prompt: "使用 $codex-proxy 打开代理管理，设置订阅、选择节点，并通过专用启动器打开 Codex。"

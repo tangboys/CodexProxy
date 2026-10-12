@@ -1,0 +1,20 @@
+; Only product files belong here. User settings live outside {app} and are preserved on uninstall.
+Source: "{#ReleaseDir}\CodexProxy.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ReleaseDir}\README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ReleaseDir}\README.en.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ReleaseDir}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ReleaseDir}\docs\BUILDING.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "{#ReleaseDir}\docs\ARCHITECTURE.md"; DestDir: "{app}\docs"; Flags: ignoreversion
+Source: "{#ReleaseDir}\THIRD-PARTY.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ReleaseDir}\TEST-RESULTS.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#ReleaseDir}\licenses\dotnet-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "{#ReleaseDir}\licenses\dotnet-THIRD-PARTY-NOTICES.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "{#ReleaseDir}\licenses\windowsdesktop-LICENSE.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "{#ReleaseDir}\licenses\mihomo-GPL-3.0.txt"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "{#ReleaseDir}\licenses\mihomo-v1.19.31-source.zip"; DestDir: "{app}\licenses"; Flags: ignoreversion
+Source: "{#ReleaseDir}\skills\codex-proxy\SKILL.md"; DestDir: "{app}\skills\codex-proxy"; Flags: ignoreversion
+Source: "{#ReleaseDir}\skills\codex-proxy\codex-proxy.ps1"; DestDir: "{app}\skills\codex-proxy"; Flags: ignoreversion
+Source: "{#ReleaseDir}\skills\codex-proxy\agents\openai.yaml"; DestDir: "{app}\skills\codex-proxy\agents"; Flags: ignoreversion
+Source: "{#ReleaseDir}\skills\codex-proxy\references\usage.md"; DestDir: "{app}\skills\codex-proxy\references"; Flags: ignoreversion
+Source: "{#ReleaseDir}\skills\codex-proxy\scripts\codex_proxy.py"; DestDir: "{app}\skills\codex-proxy\scripts"; Flags: ignoreversion
+Source: "{#ReleaseDir}\skills\codex-proxy\scripts\test_codex_proxy.py"; DestDir: "{app}\skills\codex-proxy\scripts"; Flags: ignoreversion
