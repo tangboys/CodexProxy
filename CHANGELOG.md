@@ -2,6 +2,14 @@
 
 Changes describe implementation scope, not test results. See [TEST-RESULTS.md](TEST-RESULTS.md) for validation boundaries.
 
+## 0.11.0 — Preview
+
+- Split the light-blue UI into Overview, Nodes, Logs, and Settings. Language, persisted status refresh interval, Codex path, core selection, and app updates live in Settings; core/update views are embedded.
+- Replace dotted keyboard focus frames with blue feedback while preserving Tab navigation.
+- Display local/published versions and publication date independently of update-request status. Fall back from GitHub API errors/rate limits to a public release manifest and preserve last-success metadata with source/read time.
+- Respect server retry deadlines, use a 5-minute success cache, and maintain the public manifest after Release publication without shipping a GitHub token.
+- Cancel hidden settings scans/queries and wait for them on exit. Compilation/static review only; runtime acceptance remains manual.
+
 ## 0.10.0 — Preview
 
 - Prepare a public repository with Chinese/English documentation, build/architecture guides, GPL-3.0-only project licensing, and third-party provenance.

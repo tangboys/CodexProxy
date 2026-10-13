@@ -1,0 +1,52 @@
+name: Update public release metadata
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: public-release-metadata
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: windows-latest
+    steps:
+      - name: Save published release for the rate-limit fallback
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $event = Get-Content -LiteralPath $env:GITHUB_EVENT_PATH -Raw | ConvertFrom-Json
+          $release = $event.release
+          if ($release.draft -or -not $release.published_at) { throw 'A published release is required.' }
+          $tag = [string]$release.tag_name
+          if ($tag -notmatch '^v?\d+\.\d+\.\d+$') { throw 'Use a numeric vMAJOR.MINOR.PATCH release tag.' }
+          $version = [version]$tag.TrimStart('v')
+          $endpoint = 'https://api.github.com/repos/' + $env:GITHUB_REPOSITORY + '/contents/updates/latest.json'
+          $headers = @{ Authorization = 'Bearer ' + $env:GH_TOKEN; Accept = 'application/vnd.github+json'; 'User-Agent' = 'CodexProxy-ReleaseMetadata' }
+          $existing = Invoke-RestMethod -Uri ($endpoint + '?ref=main') -Headers $headers -TimeoutSec 30
+          $previous = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($existing.content)) | ConvertFrom-Json
+          if ([version]([string]$previous.version).TrimStart('v') -gt $version) {
+            Write-Output 'A newer release is already recorded.'
+            exit 0
+          }
+          $metadata = [ordered]@{
+            version = $tag
+            prerelease = [bool]$release.prerelease
+            published_at = ([DateTimeOffset]$release.published_at).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [Globalization.CultureInfo]::InvariantCulture)
+            notes = [string]$release.body
+            url = [string]$release.html_url
+          } | ConvertTo-Json -Depth 5
+          $body = @{
+            message = 'Update public version manifest for ' + $tag
+            content = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($metadata + "`n"))
+            sha = $existing.sha
+            branch = 'main'
+          } | ConvertTo-Json
+          $null = Invoke-RestMethod -Method Put -Uri $endpoint -Headers $headers -ContentType 'application/json' -Body ([Text.Encoding]::UTF8.GetBytes($body)) -TimeoutSec 30
+          Write-Output ('Public metadata updated for ' + $tag)

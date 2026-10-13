@@ -9,7 +9,7 @@
   <sys:String x:Key="WaitingForConnections">等待连接</sys:String>
   <sys:String x:Key="CodexOnlyTitle">仅为 Codex 设置代理</sys:String>
   <sys:String x:Key="CodexOnlyHint">无需开启系统全局代理</sys:String>
-  <sys:String x:Key="VersionLabel">Windows · 预览版 0.10</sys:String>
+  <sys:String x:Key="VersionLabel">Windows · 预览版 0.11</sys:String>
   <sys:String x:Key="ExitProxy">退出程序</sys:String>
   <sys:String x:Key="ExitProxyTooltip">关闭本工具及其独立内核；Codex 桌面进程会保留</sys:String>
   <sys:String x:Key="LanguageLabel">语言</sys:String>
@@ -106,4 +106,20 @@
   <sys:String x:Key="CheckAppUpdates">检查更新</sys:String>
   <sys:String x:Key="CancelAppUpdate">取消查询</sys:String>
   <sys:String x:Key="OpenAppReleases">打开发布页</sys:String>
+  <sys:String x:Key="NavOverview">概览</sys:String>
+  <sys:String x:Key="NavNodes">节点</sys:String>
+  <sys:String x:Key="NavLogs">日志</sys:String>
+  <sys:String x:Key="NavSettings">设置</sys:String>
+  <sys:String x:Key="OverviewSubtitle">连接状态与订阅用量，一眼查看。</sys:String>
+  <sys:String x:Key="GeneralSettings">常规</sys:String>
+  <sys:String x:Key="InterfaceSettings">界面与刷新</sys:String>
+  <sys:String x:Key="RefreshIntervalLabel">状态刷新间隔</sys:String>
+  <sys:String x:Key="RefreshIntervalHint">节点与连接状态默认每 5 秒刷新；流量每秒更新。</sys:String>
+  <sys:String x:Key="RefreshEvery5">5 秒</sys:String>
+  <sys:String x:Key="RefreshEvery10">10 秒</sys:String>
+  <sys:String x:Key="RefreshEvery30">30 秒</sys:String>
+  <sys:String x:Key="RefreshEvery60">60 秒</sys:String>
+  <sys:String x:Key="CodexPathSettings">Codex 程序路径</sys:String>
+  <sys:String x:Key="ManageSubscriptions">管理订阅</sys:String>
+  <sys:String x:Key="ViewNodes">查看节点</sys:String>
 </ResourceDictionary>

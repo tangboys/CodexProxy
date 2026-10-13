@@ -12,7 +12,7 @@ The UI connection history is in memory, limited to 300 sampled entries, and excl
 
 - Subscription import downloads node data through Mihomo. Usage retrieval separately makes a direct GET with fixed `clash-verge/v2.5.9` UA and reads response headers without consuming the body. If the URL contains HTTP Basic credentials, these are used for that provider request. Use HTTPS for credential-bearing URLs.
 - Node tests contact the configured test endpoint. Codex checks make unauthenticated requests to ChatGPT/OpenAI endpoints; they do not read Codex login files or send model requests.
-- Manual app-update checks query public `tangboys/CodexProxy` GitHub Releases, including previews. Manual core-update checks query Mihomo's official releases. These requests do not include subscription URLs, Codex tokens, or account passwords. App-update queries use the dedicated authenticated proxy while running and the system default proxy while stopped, without starting a core.
+- Opening the app-update page or requesting a check queries public `tangboys/CodexProxy` GitHub Releases, including previews. Rate limits/network/service errors can fall back to `raw.githubusercontent.com/tangboys/CodexProxy/main/updates/latest.json`; metadata is cached locally with its source and read time. No GitHub credential is requested or shipped. Manual core-update checks query Mihomo's official releases. These requests do not include subscription URLs, Codex tokens, or account passwords. App-update queries use the dedicated authenticated proxy while running and the system default proxy while stopped, without starting a core.
 - Version checks do not automatically download, replace, or install software. The app does not configure startup at sign-in or install a TUN driver.
 
 ## Scope

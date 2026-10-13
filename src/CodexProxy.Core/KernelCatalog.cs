@@ -18,9 +18,9 @@ public static class KernelCatalog
     private const string ReleasesUrl = "https://github.com/MetaCubeX/mihomo/releases";
     private static readonly SemaphoreSlim BundledGate = new(1, 1);
 
-    public static async Task<string?> BundledPathAsync(string directory)
+    public static async Task<string?> BundledPathAsync(string directory, CancellationToken cancellation = default)
     {
-        await BundledGate.WaitAsync().ConfigureAwait(false);
+        await BundledGate.WaitAsync(cancellation).ConfigureAwait(false);
         try
         {
             using var resource = typeof(KernelCatalog).Assembly.GetManifestResourceStream("CodexProxy.Bundled.mihomo.exe");
@@ -30,16 +30,16 @@ public static class KernelCatalog
                 return File.Exists(fallback) ? fallback : null;
             }
 
-            var hash = await SHA256.HashDataAsync(resource).ConfigureAwait(false);
+            var hash = await SHA256.HashDataAsync(resource, cancellation).ConfigureAwait(false);
             var folder = Path.Combine(directory, "cores", "bundled-" + Convert.ToHexString(hash)[..16].ToLowerInvariant());
             var path = Path.Combine(folder, "mihomo.exe");
             if (File.Exists(path))
             {
                 await using var existing = File.OpenRead(path);
-                if ((await SHA256.HashDataAsync(existing).ConfigureAwait(false)).AsSpan().SequenceEqual(hash)) return path;
+                if ((await SHA256.HashDataAsync(existing, cancellation).ConfigureAwait(false)).AsSpan().SequenceEqual(hash)) return path;
             }
 
-            await Profile.PrivateDirectoryAsync(directory).ConfigureAwait(false);
+            await Profile.PrivateDirectoryAsync(directory, cancellation).ConfigureAwait(false);
             Directory.CreateDirectory(folder);
             var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
             try
@@ -47,7 +47,8 @@ public static class KernelCatalog
                 resource.Position = 0;
                 await using (var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None,
                     81920, FileOptions.Asynchronous))
-                    await resource.CopyToAsync(output).ConfigureAwait(false);
+                    await resource.CopyToAsync(output, cancellation).ConfigureAwait(false);
+                cancellation.ThrowIfCancellationRequested();
                 File.Move(temporary, path, true);
             }
             finally { if (File.Exists(temporary)) File.Delete(temporary); }
@@ -56,10 +57,10 @@ public static class KernelCatalog
         finally { BundledGate.Release(); }
     }
 
-    public static async Task<List<KernelOption>> DiscoverAsync(string directory, string? selectedPath)
+    public static async Task<List<KernelOption>> DiscoverAsync(string directory, string? selectedPath, CancellationToken cancellation = default)
     {
         var candidates = new List<(string Path, string Source)>();
-        var bundled = await BundledPathAsync(directory).ConfigureAwait(false);
+        var bundled = await BundledPathAsync(directory, cancellation).ConfigureAwait(false);
         if (bundled is not null) candidates.Add((bundled, "内置内核"));
         if (!string.IsNullOrWhiteSpace(selectedPath)) candidates.Add((selectedPath, "当前选择"));
 
@@ -84,18 +85,19 @@ public static class KernelCatalog
         var result = new List<KernelOption>();
         foreach (var candidate in candidates)
         {
+            cancellation.ThrowIfCancellationRequested();
             if (!File.Exists(candidate.Path)) continue;
             try
             {
                 var fullPath = Path.GetFullPath(candidate.Path);
-                if (seen.Add(fullPath)) result.Add(await InspectAsync(fullPath, candidate.Source).ConfigureAwait(false));
+                if (seen.Add(fullPath)) result.Add(await InspectAsync(fullPath, candidate.Source, cancellation).ConfigureAwait(false));
             }
             catch (ProxyException) { } // Invalid candidates do not hide the other installed cores.
         }
         return result;
     }
 
-    public static async Task<KernelOption> InspectAsync(string path, string source)
+    public static async Task<KernelOption> InspectAsync(string path, string source, CancellationToken cancellation = default)
     {
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
             throw new ProxyException(UiText.Get("内核路径无效，请选择已存在的 Mihomo EXE。"));
@@ -105,7 +107,7 @@ public static class KernelCatalog
             var info = new ProcessStartInfo(path) { UseShellExecute = false, CreateNoWindow = true,
                 RedirectStandardOutput = true, RedirectStandardError = true };
             info.ArgumentList.Add("-v");
-            var result = await ProcessRunner.RunAsync(info, TimeSpan.FromSeconds(3)).ConfigureAwait(false);
+            var result = await ProcessRunner.RunAsync(info, TimeSpan.FromSeconds(3), cancellation).ConfigureAwait(false);
             var version = Regex.Match(result.Output + "\n" + result.Error, @"(?im)^\s*Mihomo\s+(?:Meta\s+)?(?<version>\S+)");
             if (result.ExitCode != 0 || !version.Success)
                 throw new ProxyException(UiText.Get("所选文件未识别为 Mihomo 内核。"));
@@ -116,13 +118,14 @@ public static class KernelCatalog
         { throw new ProxyException(UiText.Get("无法读取 Mihomo 内核版本。")); }
     }
 
-    public static async Task<KernelUpdate> CheckUpdateAsync(KernelOption selected)
+    public static async Task<KernelUpdate> CheckUpdateAsync(KernelOption selected, CancellationToken cancellation = default)
     {
         using var client = new HttpClient(new SocketsHttpHandler { AllowAutoRedirect = false })
             { Timeout = TimeSpan.FromSeconds(10) };
         client.DefaultRequestHeaders.UserAgent.ParseAdd("CodexProxy-KernelManager/1.0");
         client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+        timeout.CancelAfter(TimeSpan.FromSeconds(10));
         try
         {
             using var response = await client.GetAsync("https://api.github.com/repos/MetaCubeX/mihomo/releases/latest", timeout.Token).ConfigureAwait(false);
@@ -142,6 +145,7 @@ public static class KernelCatalog
             var latestVersion = StableVersion(latest);
             return new(selected.Version, latest, currentVersion is null || latestVersion is null ? null : latestVersion > currentVersion, releaseUrl);
         }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
         catch (Exception error) when (error is HttpRequestException or OperationCanceledException or JsonException or KeyNotFoundException or InvalidOperationException)
         { throw new ProxyException(UiText.Get("无法查询官方更新，请检查网络连接后重试。")); }
     }

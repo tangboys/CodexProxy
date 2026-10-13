@@ -2,7 +2,18 @@
 
 This record separates compilation/static checks, user feedback, and historical runtime checks. None establishes a successful real Codex login or model call for the current preview.
 
-## 0.10.0 preview scope
+## 0.11.0 preview scope
+
+- UI scope: Overview/Nodes/Logs/Settings pages, embedded Core/Updates, persisted general preferences, and blue keyboard focus feedback instead of dotted frames.
+- Update scope: GitHub API plus public release-manifest fallback, last-success metadata cache, explicit source/read time/failure state, and server retry deadlines. The manifest is maintained after Release publication.
+- Core scanning now accepts cancellation through extraction, hashing, and bounded version subprocess work; hidden settings pages cancel queries, and exit waits for cleanup.
+- **Compilation, 2026-10-13:** Release / win-x64 / self-contained publish succeeded without compiler warnings or errors, producing `dist/0.11.0/CodexProxy.exe` with file version `0.11.0.0`. The integration fixture project compiled with 0 warnings/errors and was not executed. The app was published again after the fixture build to preserve the embedded-core input.
+- Static XAML/resource checks passed: Chinese and English each have 123 unique matching keys, with no missing dynamic references. PowerShell build/workflow scripts parsed successfully, obsolete settings-window references were removed, and PE metadata inspection matched the embedded Mihomo executable to the locked official SHA-256.
+- Static lifecycle review fixed settings recovery after a failed exit, rereading the actual core path when returning to its page, and preventing older disk-cache comparisons from replacing newer in-memory release information.
+- **No runtime validation:** product, GUI, Mihomo, integration tests, installer, and real Codex requests are reserved for the user. These compile/static results do not establish visual layout or real proxy success.
+- Only a raw EXE and license/source materials are provided; no product ZIP or installer.
+
+## 0.10.0 preview scope (historical)
 
 - Public source/docs use GPL-3.0-only for project-owned material. Third-party notices and fixed Mihomo v1.19.31 provenance are retained.
 - Manual asynchronous app-update checks query GitHub Releases, including previews, without automatic download or installation.
@@ -15,7 +26,7 @@ This record separates compilation/static checks, user feedback, and historical r
 
 0.9 had compile/static checks only. Earlier fixtures and 0.5 user feedback below apply to their recorded versions, not to 0.9 or 0.10. The real Codex message check remains step 5 and is performed last.
 
-## 0.10.0 手动验收清单（未执行）
+## 0.11.0 手动验收清单（未执行）
 
 先完成前四组配置与交互检查；真实 Codex 消息和实际流量日志作为原第 5 项放在最后。套餐边界使用服务商测试响应或用户自行控制的响应，不修改、分享真实订阅凭据来制造错误。
 
@@ -23,7 +34,7 @@ This record separates compilation/static checks, user feedback, and historical r
 
 | 操作 | 预期结果 |
 | --- | --- |
-| 完全退出旧版，打开`dist/0.10.0/CodexProxy.exe` | 显示 0.10、浅蓝主题、图标与已有配置，默认停止，不启动正式代理或 Codex，不关闭其他启动器内核。 |
+| 完全退出旧版，打开`dist/0.11.0/CodexProxy.exe` | 显示 0.11、浅蓝主题、图标与已有配置，默认停止，不启动正式代理或 Codex，不关闭其他启动器内核。 |
 | 有节点快照时保持停止查看列表 | 节点、最后状态/延迟和检测时间可见；历史结果不伪装成刚测速或已接入 Codex。 |
 | 没有快照但有 YAML 缓存，打开当前订阅 | 仅短时使用不同端口的隔离内核读缓存，结束后清理，正式代理仍停止；未测速字段显示未知。 |
 | 停止后退出重开，或从另一订阅切回 | 读取同 URL 的持久快照，不串用其他订阅的列表、延迟或时间。 |
@@ -62,12 +73,19 @@ This record separates compilation/static checks, user feedback, and historical r
 
 | 操作 | 预期结果 |
 | --- | --- |
-| 停止时点击检查更新、打开发布页，及在无发布/请求失败时重试 | 异步显示本仓库版本信息，包含预览版；不启动代理、不提交账号凭据、不自动下载或替换；失败有提示，其他界面操作仍响应。 |
+| 依次打开概览、节点、日志、设置，在最小窗口尺寸查看 | 概览保留连接/套餐与启动按钮；节点表和日志分别占独立页面；设置含常规/内核/更新，内容可滚动且无重叠截断。 |
+| 连续按 Tab/Shift+Tab 浏览按钮、下拉、节点单元格和订阅列表 | 没有截图中的虚线框；浅蓝焦点仍可辨识，键盘能导航和操作，不禁用整个页面焦点。 |
+| 在设置常规切换中英文，设状态刷新 10/30/60 秒，再完全退出重开 | 语言/间隔保留；页面、托盘与动态状态同步翻译；状态按所选间隔刷新，流量/日志仍每秒采样。恢复 5 秒可生效。 |
+| 在设置常规检测、手选 Codex 路径，再进入内核/更新 | 路径显示并保存；内核和更新嵌入主窗口，无独立设置弹窗；订阅编辑器仍可单独打开。 |
+| 停止时首次打开设置更新、手动检查并打开发布页 | 异步显示本机版本、发布版本、日期、渠道和比较；包含预览版，不启动代理、不传凭据、不自动下载；短时重进使用缓存。 |
+| API 被限流或网络失败，但公开版本清单可访问 | 显示公开版本清单来源、读取时间与版本比较；可能有 CDN 延迟，不能宣称实时 API 成功。API 在服务器等待时间前不重复请求。 |
+| 已成功查询后，两种来源都不可访问，再关闭并重开程序 | 仍显示上次已知版本、日期与原读取时间，明确本次失败/缓存；不显示“当前最新”作为成功结论。没缓存时显示未知。 |
+| 两个来源都失败，或没有发布/无可比较版本，再手动重试 | 失败、暂无发布与不可比较状态区分；没有有效版本不伪造最新版；网络查询期间其他页面仍可操作。 |
 | 中英文切换后完全退出重开 | 保留语言，节点/订阅/预选不变，主窗口、设置、日志和托盘文案更新。 |
-| 同时打开订阅与内核设置，重复同类入口 | 非模态窗口可与主界面切换，同类入口恢复已有窗口。 |
+| 在常规打开订阅编辑器，再切内核页，重复订阅入口 | 非模态订阅窗可与主界面切换，同类入口恢复已有窗口；内核只有一个嵌入视图。 |
 | 保持订阅窗口打开，应用另一核心，再回订阅窗不改核心路径保存 | 沿用最新核心，不恢复窗口打开时旧路径；停止时应用核心不启动正式代理。 |
 | 安装路径检测/手选时操作主界面 | 界面响应，冲突路径和代理写操作串行，不互相覆盖。 |
-| 内核扫描/更新查询时关闭并重开 | 旧结果不回写旧窗口或新窗口；有效 Mihomo 可选，不自动下载或替换内核。 |
+| 内核扫描/更新查询时切走页面，再返回，或退出程序 | 隐藏取消正在查询/扫描，退出等待清理；旧结果不回写；返回可重新操作。有效 Mihomo 可选，不自动下载或替换。 |
 | 保存订阅或应用内核时拖动、切链接显隐并尝试关闭 | 无全应用卡顿，未提交输入不被刷新覆盖；保存/应用事务完成后再关闭。 |
 | 正式代理启动后检测 Codex，同时浏览列表、日志、语言、设置及手选/自动选择 | 独立检测不长期锁界面，不改变主节点；进度和结果更新，套餐刷新只更新套餐信息。 |
 | Codex 检测时刷新节点、切订阅或换核心 | 先取消并等待旧检测清理，旧结果不能覆盖新订阅或新核心列表。 |

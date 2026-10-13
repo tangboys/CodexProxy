@@ -1,0 +1,28 @@
+<UserControl x:Class="CodexProxy.UpdateView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Background="#F5F9FF" FontFamily="Microsoft YaHei UI" Foreground="#172B3A">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="30,26">
+      <TextBlock Text="{DynamicResource AppUpdateTitle}" FontSize="24" FontWeight="SemiBold"/>
+      <TextBlock Text="{DynamicResource AppUpdateDescription}" TextWrapping="Wrap" Foreground="#718AA3" Margin="0,10,0,0"/>
+      <Border Background="#EAF3FF" CornerRadius="10" Padding="16" Margin="0,20,0,14">
+        <Grid>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="155"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <TextBlock Text="{DynamicResource CurrentAppVersion}" Foreground="#718AA3"/><TextBlock x:Name="CurrentVersionText" Grid.Column="1" FontWeight="SemiBold"/>
+          <TextBlock x:Name="KnownLatestLabel" Grid.Row="1" Foreground="#718AA3" Margin="0,10,0,0"/><TextBlock x:Name="LatestVersionText" Grid.Row="1" Grid.Column="1" Text="—" FontWeight="SemiBold" Foreground="#2475D4" TextWrapping="Wrap" Margin="0,10,0,0"/>
+          <TextBlock x:Name="ChannelLabel" Grid.Row="2" Foreground="#718AA3" Margin="0,10,0,0"/><TextBlock x:Name="ChannelText" Grid.Row="2" Grid.Column="1" Text="—" Margin="0,10,0,0"/>
+          <TextBlock Grid.Row="3" Text="{DynamicResource AppReleasePublished}" Foreground="#718AA3" Margin="0,10,0,0"/><TextBlock x:Name="PublishedText" Grid.Row="3" Grid.Column="1" Text="—" Margin="0,10,0,0"/>
+          <TextBlock x:Name="ComparisonLabel" Grid.Row="4" Foreground="#718AA3" Margin="0,10,0,0"/><TextBlock x:Name="ComparisonText" Grid.Row="4" Grid.Column="1" TextWrapping="Wrap" Margin="0,10,0,0"/>
+          <TextBlock x:Name="SourceLabel" Grid.Row="5" Foreground="#718AA3" Margin="0,10,0,0"/><TextBlock x:Name="SourceText" Grid.Row="5" Grid.Column="1" TextWrapping="Wrap" Margin="0,10,0,0"/>
+          <TextBlock x:Name="CheckedLabel" Grid.Row="6" Foreground="#718AA3" Margin="0,10,0,0"/><TextBlock x:Name="CheckedText" Grid.Row="6" Grid.Column="1" Text="—" Margin="0,10,0,0"/>
+          <TextBlock x:Name="RetryLabel" Grid.Row="7" Foreground="#718AA3" Margin="0,10,0,0"/><TextBlock x:Name="RetryText" Grid.Row="7" Grid.Column="1" Text="—" TextWrapping="Wrap" Margin="0,10,0,0"/>
+        </Grid>
+      </Border>
+      <TextBlock x:Name="NetworkHint" Foreground="#718AA3" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,14"/>
+      <TextBlock Text="{DynamicResource AppReleaseNotes}" FontWeight="SemiBold" Margin="0,0,0,8"/>
+      <TextBox x:Name="NotesText" MinHeight="130" MaxHeight="260" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Background="White" BorderBrush="#DDE8F5" Padding="12" FontSize="12"/>
+      <TextBlock x:Name="MessageLabel" TextWrapping="Wrap" Foreground="#526A79" FontSize="12" Margin="0,16,0,14"/>
+      <ProgressBar x:Name="Progress" Height="3" IsIndeterminate="True" Visibility="Collapsed" Foreground="#2475D4" Margin="0,0,0,12"/>
+      <WrapPanel HorizontalAlignment="Right"><Button x:Name="CancelButton" Content="{DynamicResource CancelAppUpdate}" Click="CancelClick" IsEnabled="False" Margin="0,0,8,0"/><Button Content="{DynamicResource OpenAppReleases}" Click="OpenReleasesClick" Margin="0,0,8,0"/><Button x:Name="CheckButton" Content="{DynamicResource CheckAppUpdates}" Click="CheckClick" Style="{StaticResource Primary}"/></WrapPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

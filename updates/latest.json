@@ -1,0 +1,7 @@
+{
+  "version": "v0.10.0",
+  "prerelease": true,
+  "published_at": "2026-10-12T17:37:34Z",
+  "notes": "Windows x64 preview. Compile/static checks only; runtime validation remains manual. Download the EXE and accompanying license/source materials from the release page.",
+  "url": "https://github.com/tangboys/CodexProxy/releases/tag/v0.10.0"
+}

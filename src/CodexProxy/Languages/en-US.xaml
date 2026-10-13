@@ -9,7 +9,7 @@
   <sys:String x:Key="WaitingForConnections">Waiting for connections</sys:String>
   <sys:String x:Key="CodexOnlyTitle">Proxy for Codex only</sys:String>
   <sys:String x:Key="CodexOnlyHint">No system proxy required</sys:String>
-  <sys:String x:Key="VersionLabel">Windows · Preview 0.10</sys:String>
+  <sys:String x:Key="VersionLabel">Windows · Preview 0.11</sys:String>
   <sys:String x:Key="ExitProxy">Exit app</sys:String>
   <sys:String x:Key="ExitProxyTooltip">Close this app and its proxy core; keep Codex running</sys:String>
   <sys:String x:Key="LanguageLabel">Language</sys:String>
@@ -106,4 +106,20 @@
   <sys:String x:Key="CheckAppUpdates">Check updates</sys:String>
   <sys:String x:Key="CancelAppUpdate">Cancel check</sys:String>
   <sys:String x:Key="OpenAppReleases">Open release page</sys:String>
+  <sys:String x:Key="NavOverview">Overview</sys:String>
+  <sys:String x:Key="NavNodes">Nodes</sys:String>
+  <sys:String x:Key="NavLogs">Logs</sys:String>
+  <sys:String x:Key="NavSettings">Settings</sys:String>
+  <sys:String x:Key="OverviewSubtitle">Your connection status and subscription usage at a glance.</sys:String>
+  <sys:String x:Key="GeneralSettings">General</sys:String>
+  <sys:String x:Key="InterfaceSettings">Interface and refresh</sys:String>
+  <sys:String x:Key="RefreshIntervalLabel">Status refresh interval</sys:String>
+  <sys:String x:Key="RefreshIntervalHint">Nodes and connection status refresh every 5 seconds by default; traffic updates each second.</sys:String>
+  <sys:String x:Key="RefreshEvery5">5 seconds</sys:String>
+  <sys:String x:Key="RefreshEvery10">10 seconds</sys:String>
+  <sys:String x:Key="RefreshEvery30">30 seconds</sys:String>
+  <sys:String x:Key="RefreshEvery60">60 seconds</sys:String>
+  <sys:String x:Key="CodexPathSettings">Codex application path</sys:String>
+  <sys:String x:Key="ManageSubscriptions">Manage subscriptions</sys:String>
+  <sys:String x:Key="ViewNodes">View nodes</sys:String>
 </ResourceDictionary>

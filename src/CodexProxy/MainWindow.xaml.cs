@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Threading;
 using CodexProxy.Core;
 using Forms = System.Windows.Forms;
@@ -21,8 +22,8 @@ public partial class MainWindow : Window
     private Task? pathTask;
     private readonly SemaphoreSlim serviceGate = new(1, 1);
     private SubscriptionWindow? subscriptionWindow;
-    private KernelWindow? kernelWindow;
-    private UpdateWindow? updateWindow;
+    private KernelSettingsView? kernelView;
+    private UpdateView? updateView;
     private string? subscriptionName;
     private string? subscriptionUrl;
     private SubscriptionUsage? subscriptionUsage;
@@ -36,7 +37,10 @@ public partial class MainWindow : Window
     private readonly Forms.NotifyIcon tray;
     private readonly System.Drawing.Icon appIcon;
     private readonly Forms.ContextMenuStrip trayMenu;
-    private bool initializingLanguage = true;
+    private bool initializingLanguage = true, initializingRefreshInterval = true, shellReady;
+    private string currentPage = "overview";
+    private int refreshIntervalSeconds = 5;
+    private Task? uiSettingsTask;
     private bool busy, exiting, pathBusy, shutdownReady;
     private readonly ObservableCollection<Node> nodes = [];
     public static readonly DependencyProperty ProxyActionsEnabledProperty = DependencyProperty.Register(
@@ -66,11 +70,17 @@ public partial class MainWindow : Window
         LanguageBox.SelectedValue = UiText.Language;
         initializingLanguage = false;
         ApplyTrayLanguage();
+        RefreshIntervalBox.SelectedValue = "5";
+        RefreshIntervalBox.IsEnabled = false;
+        shellReady = true;
+        NavigateTo("overview");
         Loaded += async (_, _) =>
         {
+            var preferences = LoadUiSettingsAsync(); uiSettingsTask = preferences;
             var detection = DetectPathAsync();
             await RunAsync(() => ReloadAsync(), null);
-            await detection;
+            await detection; await preferences;
+            if (uiSettingsTask == preferences) uiSettingsTask = null;
             if (!exiting) { timer.Start(); trafficTimer.Start(); }
         };
         timer.Tick += async (_, _) =>
@@ -110,7 +120,8 @@ public partial class MainWindow : Window
             ApplyTrayLanguage();
             NodeGrid.Items.Refresh(); LogGrid.Items.Refresh(); RenderNodes(); RenderProxyState(); RenderSubscriptionUsage();
             if (!service.ProxyEnabled) ResetTrafficDisplay();
-            subscriptionWindow?.RefreshLanguage(); kernelWindow?.RefreshLanguage(); updateWindow?.RefreshLanguage();
+            RefreshPageHeading(); RenderRefreshInterval();
+            subscriptionWindow?.RefreshLanguage(); kernelView?.RefreshLanguage(); updateView?.RefreshLanguage();
         }
         catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException or Win32Exception)
         { MessageLabel.Text = T("语言保存失败，请检查本地文件权限。", "Could not save the language. Check local file permissions."); }
@@ -144,7 +155,8 @@ public partial class MainWindow : Window
         try
         {
             usageCancellation?.Cancel();
-            if (updateWindow is { } updates) await updates.CloseAsync();
+            if (updateView is { } updates) await updates.CloseAsync();
+            if (kernelView is { } kernels) await kernels.CloseAsync();
             if (usageTask is { } pendingUsage) await pendingUsage;
             await StopCodexCheckAsync();
             await WaitForPollingAsync();
@@ -154,7 +166,8 @@ public partial class MainWindow : Window
                 catch (Exception error) when (error is ProxyException or System.IO.IOException or System.Text.Json.JsonException or UnauthorizedAccessException or Win32Exception)
                 { /* The path operation reports its own error. */ }
             }
-            subscriptionWindow?.Close(); kernelWindow?.Close();
+            if (uiSettingsTask is { } pendingSettings) await pendingSettings;
+            subscriptionWindow?.Close();
             timer.Stop(); trafficTimer.Stop();
             await Task.Run(async () => await service.DisposeAsync());
             tray.Dispose(); appIcon.Dispose();
@@ -164,6 +177,10 @@ public partial class MainWindow : Window
         catch (Exception error) when (error is ProxyException or System.IO.IOException or UnauthorizedAccessException or Win32Exception or InvalidOperationException)
         {
             exiting = false;
+            if (kernelView is not null) kernelView.Applied -= KernelApplied;
+            KernelHost.Content = UpdateHost.Content = null;
+            kernelView = null; updateView = null;
+            if (currentPage == "settings") EnsureSettingsView();
             Restore(); timer.Start(); trafficTimer.Start(); UpdateUiState();
             MessageLabel.Text = T("专用代理清理未完成，请稍后再次退出。", "Dedicated proxy cleanup did not finish. Please try exiting again shortly.");
         }
@@ -186,6 +203,7 @@ public partial class MainWindow : Window
     private void UpdateUiState()
     {
         ProxyActionsEnabled = !busy && !exiting;
+        NavigationList.IsEnabled = !exiting;
         ProxyStopped = !service.ProxyEnabled;
         AutoCheck.IsEnabled = TestNodesButton.IsEnabled = ProxyActionsEnabled && nodes.Count > 0;
         RefreshNodesButton.IsEnabled = ProxyActionsEnabled && subscriptionUrl is not null;
@@ -613,31 +631,127 @@ public partial class MainWindow : Window
         }, null);
     }
 
-    private void AppUpdateClick(object sender, RoutedEventArgs e)
+    private void NavigationChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (exiting) return;
-        if (updateWindow is not null) { updateWindow.Activate(); return; }
-        var window = new UpdateWindow(() => service.ProxyEnabled && CoreAvailable && service.Core is { } core
-            ? new System.Net.WebProxy($"http://127.0.0.1:{core.Profile.Port}")
-                { Credentials = new System.Net.NetworkCredential("codex", core.Profile.ProxyPassword) } : null) { Owner = this };
-        updateWindow = window;
-        window.Closed += (_, _) => updateWindow = null;
-        window.Show();
+        if (shellReady && !exiting && NavigationList.SelectedValue is string page) NavigateTo(page);
     }
 
-    private void KernelSettingsClick(object sender, RoutedEventArgs e)
+    private void NavigateTo(string page)
+    {
+        currentPage = page;
+        OverviewPage.Visibility = page == "overview" ? Visibility.Visible : Visibility.Collapsed;
+        NodesPage.Visibility = page == "nodes" ? Visibility.Visible : Visibility.Collapsed;
+        LogsPage.Visibility = page == "logs" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPage.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
+        if (!Equals(NavigationList.SelectedValue, page)) NavigationList.SelectedValue = page;
+        RefreshPageHeading();
+        if (page == "settings") EnsureSettingsView();
+    }
+
+    private void RefreshPageHeading()
+    {
+        (PageTitle.Text, PageSubtitle.Text) = currentPage switch
+        {
+            "nodes" => (T("节点", "Nodes"), T("查看测速记录，预选节点或检查 Codex 访问。", "Review test results, select a node, or check Codex access.")),
+            "logs" => (T("日志", "Logs"), T("查看本次运行的连接目标、流量和节点链路。", "Inspect this session's destinations, traffic, and node routes.")),
+            "settings" => (T("设置", "Settings"), T("统一管理界面、程序路径、代理内核和更新。", "Manage the interface, app path, proxy core, and updates.")),
+            _ => (T("概览", "Overview"), T("连接状态与订阅用量，一眼查看。", "Your connection status and subscription usage at a glance."))
+        };
+    }
+
+    private void ViewNodesClick(object sender, RoutedEventArgs e) => NavigateTo("nodes");
+
+    private void SettingsTabChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (shellReady && !exiting && ReferenceEquals(e.Source, SettingsTabs) && currentPage == "settings") EnsureSettingsView();
+    }
+
+    private void EnsureSettingsView()
+    {
+        if (SettingsTabs.SelectedItem is not TabItem tab) return;
+        if (Equals(tab.Tag, "kernel") && kernelView is null)
+        {
+            kernelView = new KernelSettingsView(service, ExecuteProxyOperationAsync);
+            kernelView.Applied += KernelApplied;
+            KernelHost.Content = kernelView;
+        }
+        else if (Equals(tab.Tag, "updates") && updateView is null)
+        {
+            updateView = new UpdateView(CreateUpdateProxy, service.DirectoryPath);
+            UpdateHost.Content = updateView;
+        }
+    }
+
+    private System.Net.IWebProxy? CreateUpdateProxy() => service.ProxyEnabled && CoreAvailable && service.Core is { } core
+        ? new System.Net.WebProxy($"http://127.0.0.1:{core.Profile.Port}")
+            { Credentials = new System.Net.NetworkCredential("codex", core.Profile.ProxyPassword) } : null;
+
+    private async void KernelApplied()
     {
         if (exiting) return;
-        if (kernelWindow is not null) { kernelWindow.Activate(); return; }
-        var window = new KernelWindow(service, ExecuteProxyOperationAsync) { Owner = this };
-        kernelWindow = window;
-        window.Closed += async (_, _) =>
+        traffic.Unavailable();
+        await RunAsync(() => ReloadAsync(), null, false);
+    }
+
+    private async Task LoadUiSettingsAsync()
+    {
+        try
         {
-            var changed = window.Changed;
-            kernelWindow = null;
-            if (changed && !exiting) { traffic.Unavailable(); await RunAsync(() => ReloadAsync(), null, false); }
-        };
-        window.Show();
+            var settings = await Task.Run(() => UiSettings.Load(service.DirectoryPath));
+            if (exiting) return;
+            refreshIntervalSeconds = settings.RefreshIntervalSeconds;
+            timer.Interval = TimeSpan.FromSeconds(refreshIntervalSeconds);
+        }
+        catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        { if (!exiting) MessageLabel.Text = T("刷新间隔读取失败，已使用默认 5 秒。", "Could not read the refresh interval. Using the default 5 seconds."); }
+        finally
+        {
+            initializingRefreshInterval = false;
+            if (!exiting)
+            {
+                initializingRefreshInterval = true;
+                RefreshIntervalBox.SelectedValue = refreshIntervalSeconds.ToString();
+                initializingRefreshInterval = false;
+                RefreshIntervalBox.IsEnabled = true;
+                RenderRefreshInterval();
+            }
+        }
+    }
+
+    private void RenderRefreshInterval() => RefreshIntervalStatus.Text =
+        T($"节点与连接状态每 {refreshIntervalSeconds} 秒刷新；流量每秒更新。", $"Nodes and connection status refresh every {refreshIntervalSeconds} seconds; traffic updates each second.");
+
+    private async void RefreshIntervalChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (initializingRefreshInterval || exiting || uiSettingsTask is { IsCompleted: false } ||
+            !int.TryParse(RefreshIntervalBox.SelectedValue?.ToString(), out var seconds) || seconds == refreshIntervalSeconds) return;
+        RefreshIntervalBox.IsEnabled = false;
+        var pending = SaveRefreshIntervalAsync(seconds); uiSettingsTask = pending;
+        await pending;
+        if (uiSettingsTask == pending) uiSettingsTask = null;
+    }
+
+    private async Task SaveRefreshIntervalAsync(int seconds)
+    {
+        try
+        {
+            await Task.Run(() => new UiSettings(seconds).Save(service.DirectoryPath));
+            refreshIntervalSeconds = seconds;
+            timer.Interval = TimeSpan.FromSeconds(seconds);
+            if (!exiting) RenderRefreshInterval();
+        }
+        catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException or Win32Exception or ProxyException)
+        { if (!exiting) MessageLabel.Text = T("刷新间隔保存失败，请检查本地文件权限。", "Could not save the refresh interval. Check local file permissions."); }
+        finally
+        {
+            if (!exiting)
+            {
+                initializingRefreshInterval = true;
+                RefreshIntervalBox.SelectedValue = refreshIntervalSeconds.ToString();
+                initializingRefreshInterval = false;
+                RefreshIntervalBox.IsEnabled = true;
+            }
+        }
     }
 
     private void SettingsClick(object sender, RoutedEventArgs e)
