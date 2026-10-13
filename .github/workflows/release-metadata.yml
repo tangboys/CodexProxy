@@ -42,6 +42,7 @@ jobs:
             notes = [string]$release.body
             url = [string]$release.html_url
           } | ConvertTo-Json -Depth 5
+          $metadata = $metadata.Replace("`r`n", "`n")
           $body = @{
             message = 'Update public version manifest for ' + $tag
             content = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($metadata + "`n"))
