@@ -87,6 +87,7 @@ await using (var borrowed = new CoreSession(fixture.DirectoryPath, service.Profi
 }
 Check(await core.RunningAsync(), "disposing borrowed session leaves owning core alive");
 await SubscriptionChecks.RunAsync(fixture, service, Check);
+await NetworkChecks.RunAsync(fixture, service, Check);
 
 await core.ChooseAsync(Fixture.GoodName);
 var selectedBefore = (await core.ApiAsync("/proxies/" + CoreSession.Select))!["now"]!.GetValue<string>();

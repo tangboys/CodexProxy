@@ -40,7 +40,11 @@ public partial class MainWindow : Window
     private bool initializingLanguage = true, initializingRefreshInterval = true, shellReady;
     private string currentPage = "overview";
     private int refreshIntervalSeconds = 5;
-    private Task? uiSettingsTask;
+    private Task? uiSettingsTask, networkTask;
+    private NetworkSettings networkSettings = new();
+    private bool initializingNetwork = true, networkLoaded, savingNetwork;
+    private int? configuredProxyPort, runningProxyPort, browserBridgePort;
+    private Func<string>? networkMessage;
     private bool busy, exiting, pathBusy, shutdownReady;
     private readonly ObservableCollection<Node> nodes = [];
     public static readonly DependencyProperty ProxyActionsEnabledProperty = DependencyProperty.Register(
@@ -72,15 +76,18 @@ public partial class MainWindow : Window
         ApplyTrayLanguage();
         RefreshIntervalBox.SelectedValue = "5";
         RefreshIntervalBox.IsEnabled = false;
+        SubscriptionDownloadModeBox.IsEnabled = ProxyPortBox.IsEnabled = SaveProxyPortButton.IsEnabled = AutoProxyPortButton.IsEnabled = false;
         shellReady = true;
         NavigateTo("overview");
         Loaded += async (_, _) =>
         {
             var preferences = LoadUiSettingsAsync(); uiSettingsTask = preferences;
+            var networkPreferences = LoadNetworkSettingsAsync(); networkTask = networkPreferences;
             var detection = DetectPathAsync();
             await RunAsync(() => ReloadAsync(), null);
-            await detection; await preferences;
+            await detection; await preferences; await networkPreferences;
             if (uiSettingsTask == preferences) uiSettingsTask = null;
+            if (networkTask == networkPreferences) networkTask = null;
             if (!exiting) { timer.Start(); trafficTimer.Start(); }
         };
         timer.Tick += async (_, _) =>
@@ -120,7 +127,7 @@ public partial class MainWindow : Window
             ApplyTrayLanguage();
             NodeGrid.Items.Refresh(); LogGrid.Items.Refresh(); RenderNodes(); RenderProxyState(); RenderSubscriptionUsage();
             if (!service.ProxyEnabled) ResetTrafficDisplay();
-            RefreshPageHeading(); RenderRefreshInterval();
+            RefreshPageHeading(); RenderRefreshInterval(); RenderNetworkSettings(); RenderProxyAddresses();
             subscriptionWindow?.RefreshLanguage(); kernelView?.RefreshLanguage(); updateView?.RefreshLanguage();
         }
         catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException or Win32Exception)
@@ -167,6 +174,7 @@ public partial class MainWindow : Window
                 { /* The path operation reports its own error. */ }
             }
             if (uiSettingsTask is { } pendingSettings) await pendingSettings;
+            if (networkTask is { } pendingNetwork) await pendingNetwork;
             subscriptionWindow?.Close();
             timer.Stop(); trafficTimer.Stop();
             await Task.Run(async () => await service.DisposeAsync());
@@ -205,6 +213,9 @@ public partial class MainWindow : Window
         ProxyActionsEnabled = !busy && !exiting;
         NavigationList.IsEnabled = !exiting;
         ProxyStopped = !service.ProxyEnabled;
+        SubscriptionDownloadModeBox.IsEnabled = ProxyActionsEnabled && networkLoaded && !savingNetwork;
+        ProxyPortBox.IsEnabled = SaveProxyPortButton.IsEnabled = AutoProxyPortButton.IsEnabled =
+            ProxyActionsEnabled && ProxyStopped && networkLoaded && !savingNetwork;
         AutoCheck.IsEnabled = TestNodesButton.IsEnabled = ProxyActionsEnabled && nodes.Count > 0;
         RefreshNodesButton.IsEnabled = ProxyActionsEnabled && subscriptionUrl is not null;
         RefreshUsageButton.IsEnabled = ProxyActionsEnabled && subscriptionUrl is not null && usageCancellation is null;
@@ -215,7 +226,7 @@ public partial class MainWindow : Window
         CancelCheck.Visibility = checkCancellation is null ? Visibility.Collapsed : Visibility.Visible;
         CancelCheck.IsEnabled = checkCancellation is { IsCancellationRequested: false };
         Progress.Visibility = busy || checkCancellation is not null ? Visibility.Visible : Visibility.Collapsed;
-        RenderProxyState();
+        RenderProxyState(); RenderNetworkSettings();
     }
 
     private Task ExecuteProxyOperationAsync(Func<Task> action, bool invalidatesNodes) =>
@@ -276,6 +287,7 @@ public partial class MainWindow : Window
         subscriptionUrl = settings.Profile?.Url;
         subscriptionName = settings.Subscription;
         selectedNode = settings.Profile?.Selected;
+        configuredProxyPort = settings.Profile?.Port;
         if (settings.Metadata is { } metadata && (usageUpdatedAt is null || metadata.UpdatedAt >= usageUpdatedAt))
         { subscriptionUsage = metadata.Usage; usageUpdatedAt = metadata.UpdatedAt; }
         RenderNodes(); RenderSubscriptionUsage(); UpdateUiState();
@@ -292,9 +304,11 @@ public partial class MainWindow : Window
             var desktop = !ready
                 ? service.Desktop?.Started == true ? T("Codex 仍在运行 · 专用代理已停止", "Codex is still running · Dedicated proxy stopped") : T("尚未通过此启动器打开 Codex", "Codex has not been opened through this launcher")
                 : service.Desktop is null ? T("代理已就绪 · 请通过此启动器打开 Codex", "Proxy ready · Open Codex through this launcher") : await service.Desktop.StatusAsync(cancellation);
-            return (Nodes: preview?.Nodes, CheckedAt: preview?.CheckedAt, Ready: ready, Desktop: desktop, Error: previewError);
+            return (Nodes: preview?.Nodes, CheckedAt: preview?.CheckedAt, Ready: ready, Desktop: desktop, Error: previewError,
+                ProxyPort: service.ProxyEnabled ? service.Core?.Profile.Port : null, BridgePort: service.Desktop?.BridgePort);
         }, cancellation);
         CoreAvailable = snapshot.Ready;
+        runningProxyPort = snapshot.ProxyPort; browserBridgePort = snapshot.BridgePort;
         nodesCheckedAt = snapshot.CheckedAt;
         nodePreviewError = snapshot.Error;
         var selectedName = (NodeGrid.SelectedItem as Node)?.Name;
@@ -345,6 +359,7 @@ public partial class MainWindow : Window
             !CoreAvailable ? T("等待内核就绪；若持续不可达，请停止后重新启动。", "Waiting for the core. Stop and start again if it remains unreachable.") :
             service.Core?.OwnsProcess == false ? T("已连接其他启动器的内核；停止需在原启动器操作。", "Connected to another launcher's core. Stop it from that launcher.") :
             T("内核就绪；仅通过下方 Codex 状态判断接入，模型请求仍需实测。", "Core ready. See Codex status below for routing; verify model requests separately.");
+        RenderProxyAddresses();
     }
 
     private void RenderSubscriptionUsage()
@@ -387,7 +402,7 @@ public partial class MainWindow : Window
         try
         {
             if (previous is not null) await previous;
-            var metadata = await Task.Run(() => SubscriptionMetadata.FetchAsync(service.DirectoryPath, url, cancellation.Token), cancellation.Token);
+            var metadata = await Task.Run(() => service.FetchSubscriptionMetadataAsync(url, cancellation.Token), cancellation.Token);
             if (exiting || cancellation.IsCancellationRequested || subscriptionUrl != url) return;
             subscriptionUsage = metadata.Usage; usageUpdatedAt = metadata.UpdatedAt;
         }
@@ -692,6 +707,154 @@ public partial class MainWindow : Window
         if (exiting) return;
         traffic.Unavailable();
         await RunAsync(() => ReloadAsync(), null, false);
+    }
+
+    private async Task LoadNetworkSettingsAsync()
+    {
+        try
+        {
+            var settings = await Task.Run(() => service.Network);
+            if (exiting) return;
+            networkSettings = settings; networkLoaded = true;
+            SyncNetworkInputs(true);
+        }
+        catch (Exception error) when (error is ProxyException or System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        {
+            if (!exiting) ShowNetworkMessage(() => error is ProxyException ? error.Message :
+                T("无法读取网络设置，请检查本地配置和文件权限。", "Could not read network settings. Check local configuration and file permissions."));
+        }
+        finally { if (!exiting) UpdateUiState(); }
+    }
+
+    private void SyncNetworkInputs(bool updatePort)
+    {
+        initializingNetwork = true;
+        SubscriptionDownloadModeBox.SelectedValue = networkSettings.DownloadMode.ToString();
+        if (updatePort) ProxyPortBox.Text = networkSettings.ProxyPort?.ToString() ?? "";
+        initializingNetwork = false;
+        RenderNetworkSettings(); RenderProxyAddresses();
+    }
+
+    private void ShowNetworkMessage(Func<string> message)
+    {
+        networkMessage = message;
+        NetworkSettingsHint.Text = message();
+    }
+
+    private void RenderNetworkSettings()
+    {
+        SubscriptionRouteHint.Text = networkSettings.DownloadMode switch
+        {
+            SubscriptionDownloadMode.System => T("节点在下次刷新时使用 Windows / 环境默认代理；系统代理变更后请重新刷新。套餐按此路由读取。", "The next node refresh uses the Windows / environment default proxy. Refresh after system proxy changes. Usage uses this route."),
+            SubscriptionDownloadMode.Dedicated => T("节点在下次刷新时使用当前专用代理；代理需已启动，不会自动启动或降级直连。套餐按此路由读取。", "The next node refresh uses the current dedicated proxy, which must be running. It will not start automatically or fall back to direct. Usage uses this route."),
+            _ => T("节点在下次刷新时使用直连；套餐同样直连，不修改系统代理。", "The next node refresh and usage request use a direct connection without changing the system proxy.")
+        };
+        NetworkSettingsHint.Text = networkMessage?.Invoke() ??
+            T("端口保存前检查当前占用，正式启动时会再次检查。", "The port is checked before saving and checked again when the proxy starts.");
+    }
+
+    private void RenderProxyAddresses()
+    {
+        var port = service.ProxyEnabled ? runningProxyPort ?? configuredProxyPort : configuredProxyPort ?? networkSettings.ProxyPort;
+        ProxyAddressLabel.Text = port is { } value
+            ? service.ProxyEnabled
+                ? CoreAvailable
+                    ? T($"运行端口（HTTP / SOCKS5）：127.0.0.1:{value}", $"Running port (HTTP / SOCKS5): 127.0.0.1:{value}")
+                    : T($"目标端口（HTTP / SOCKS5）：127.0.0.1:{value} · 内核未就绪", $"Target port (HTTP / SOCKS5): 127.0.0.1:{value} · Core not ready")
+                : T($"配置端口（HTTP / SOCKS5）：127.0.0.1:{value} · 本工具未监听", $"Configured port (HTTP / SOCKS5): 127.0.0.1:{value} · Not listening in this app")
+            : T("专用代理地址将在启用订阅后自动分配。", "The dedicated proxy address will be allocated after activating a subscription.");
+        BridgeAddressLabel.Visibility = browserBridgePort is null ? Visibility.Collapsed : Visibility.Visible;
+        if (browserBridgePort is { } bridge)
+            BridgeAddressLabel.Text = !service.ProxyEnabled
+                ? T($"Codex 界面转发：127.0.0.1:{bridge} · 本地转发保留，代理已停", $"Codex UI bridge: 127.0.0.1:{bridge} · Bridge retained, proxy stopped")
+                : T($"Codex 界面转发：127.0.0.1:{bridge}", $"Codex UI bridge: 127.0.0.1:{bridge}");
+    }
+
+    private async void SubscriptionDownloadModeChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (initializingNetwork || !networkLoaded || savingNetwork || busy || exiting ||
+            !Enum.TryParse<SubscriptionDownloadMode>(SubscriptionDownloadModeBox.SelectedValue?.ToString(), out var mode) ||
+            mode == networkSettings.DownloadMode) return;
+        var pending = SaveNetworkSettingsAsync(mode, null); networkTask = pending;
+        await pending;
+        if (networkTask == pending) networkTask = null;
+    }
+
+    private async void SaveProxyPortClick(object sender, RoutedEventArgs e)
+    {
+        if (!networkLoaded || savingNetwork || busy || exiting || service.ProxyEnabled) return;
+        var text = ProxyPortBox.Text.Trim();
+        int? port = null;
+        if (text.Length > 0)
+        {
+            if (!int.TryParse(text, out var value) || value is < 1 or > 65535)
+            {
+                ShowNetworkMessage(() => T("端口请输入 1–65535；留空恢复自动，0 不是有效端口。", "Enter a port from 1 to 65535, or leave blank for auto. Zero is not a valid port."));
+                return;
+            }
+            port = value;
+        }
+        var pending = SaveNetworkSettingsAsync(null, port); networkTask = pending;
+        await pending;
+        if (networkTask == pending) networkTask = null;
+    }
+
+    private async void RestoreAutoProxyPortClick(object sender, RoutedEventArgs e)
+    {
+        if (!networkLoaded || savingNetwork || busy || exiting || service.ProxyEnabled) return;
+        var pending = SaveNetworkSettingsAsync(null, null); networkTask = pending;
+        await pending;
+        if (networkTask == pending) networkTask = null;
+    }
+
+    private async Task SaveNetworkSettingsAsync(SubscriptionDownloadMode? mode, int? port)
+    {
+        var stateRefreshed = false;
+        savingNetwork = true; UpdateUiState();
+        ShowNetworkMessage(() => mode is not null
+            ? T("正在保存订阅下载路由…", "Saving the subscription download route…")
+            : T("正在检查端口占用并保存…", "Checking port availability and saving…"));
+        try
+        {
+            await ExecuteProxyOperationAsync(async () =>
+            {
+                if (mode is not null) await StopUsageRefreshAsync();
+                networkSettings = await Task.Run(async () =>
+                {
+                    if (mode is { } selected) await service.SetSubscriptionDownloadModeAsync(selected);
+                    else await service.SetProxyPortAsync(port);
+                    return service.Network;
+                });
+                if (mode is null)
+                {
+                    await ReloadAsync();
+                    stateRefreshed = true;
+                }
+            }, mode is null);
+            SyncNetworkInputs(mode is null);
+            if (mode is not null && subscriptionUrl is { } url)
+            {
+                usageRequestedUrl = url;
+                BeginUsageRefresh(url);
+            }
+            ShowNetworkMessage(() => mode is not null
+                ? T("路由已保存，节点在下次刷新时生效；套餐按新路由读取。", "Route saved. Nodes use it on their next refresh; usage uses the new route.")
+                : T("端口已保存。请完全退出并重新启动 Codex 后使用新端口。", "Port saved. Fully exit and relaunch Codex to use the new port."));
+        }
+        catch (ProxyException error) { if (!exiting) ShowNetworkMessage(() => error.Message); }
+        catch (OperationCanceledException) { if (!exiting) ShowNetworkMessage(() => T("网络设置操作已停止。", "Network settings operation stopped.")); }
+        catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException or Win32Exception)
+        { if (!exiting) ShowNetworkMessage(() => T("网络设置保存失败，请检查本地配置和文件权限。", "Could not save network settings. Check local configuration and file permissions.")); }
+        finally
+        {
+            if (mode is null && !stateRefreshed && !exiting)
+            {
+                try { await ExecuteProxyOperationAsync(() => ReloadAsync(), false); }
+                catch (Exception) { /* Keep the original save error and unsubmitted port input. */ }
+            }
+            savingNetwork = false;
+            if (!exiting) { SyncNetworkInputs(false); UpdateUiState(); }
+        }
     }
 
     private async Task LoadUiSettingsAsync()

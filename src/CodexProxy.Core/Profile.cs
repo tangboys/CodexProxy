@@ -43,11 +43,20 @@ public sealed record Profile
 
     public static int[] FreePorts()
     {
-        using var first = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        using var second = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-        first.Bind(new IPEndPoint(IPAddress.Loopback, 0));
-        second.Bind(new IPEndPoint(IPAddress.Loopback, 0));
-        return [((IPEndPoint)first.LocalEndPoint!).Port, ((IPEndPoint)second.LocalEndPoint!).Port];
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            using var first = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) { ExclusiveAddressUse = true };
+            using var udp = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp) { ExclusiveAddressUse = true };
+            using var second = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp) { ExclusiveAddressUse = true };
+            first.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+            try { udp.Bind(first.LocalEndPoint!); } // TCP and UDP have independent port occupancy.
+            catch (SocketException error) when (error.SocketErrorCode is SocketError.AddressAlreadyInUse or SocketError.AccessDenied) { continue; }
+            second.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+            return [((IPEndPoint)first.LocalEndPoint!).Port, ((IPEndPoint)second.LocalEndPoint!).Port];
+        }
+        throw new ProxyException(UiText.Language == "en-US"
+            ? "Could not allocate a free TCP/UDP proxy port. Try again or choose a port in Settings."
+            : "未能自动分配空闲 TCP/UDP 代理端口，请重试或在设置中手动指定。");
     }
 
     public static string FindCore(string? explicitPath) =>

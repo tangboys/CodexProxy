@@ -2,7 +2,18 @@
 
 This record separates compilation/static checks, user feedback, and historical runtime checks. None establishes a successful real Codex login or model call for the current preview.
 
-## 0.11.1 preview scope
+## 0.12.0 preview scope
+
+- Overview now distinguishes the configured/ready mixed proxy endpoint from the browser bridge. General settings add Direct/System/Dedicated subscription routing and stopped-only mixed-port configuration.
+- Port saving checks loopback TCP/UDP availability and controller conflicts; startup checks again. A successful port change retains authentication and disposes the previous bridge without terminating Codex. The user must relaunch Codex to apply the new port.
+- Native HTTP subscription providers retain their 24-hour update and 5-minute health/Auto intervals. The selected route also controls usage retrieval. No automatic fallback starts a main proxy or changes the route; Dedicated mode needs an already running proxy and cached nodes.
+- Subscription updates stage validation before replacing caches/configuration. Failure attempts to restore prior cache, snapshot, profile, configuration and selection; incomplete restoration is reported explicitly.
+- **Compilation, 2026-10-14:** integration-fixture compilation and Release / win-x64 / self-contained publish succeeded with 0 compiler warnings/errors. Output: `dist/0.12.0/CodexProxy.exe`, file version `0.12.0.0`. Publishing followed fixture compilation so the embedded-core input is preserved.
+- Static XAML/resource checks found 136 unique matching keys per language with no missing dynamic references. Static PE metadata inspection matched the embedded Mihomo resource to the locked official executable hash. The source diff passed whitespace checks.
+- Fixture source adds route persistence/configuration assertions, invalid settings, TCP/UDP/controller conflicts, authentication/controller preservation, running-port refusal, and failed configuration-commit cache restoration. **These fixtures were compiled, not executed.** Real PAC, upstream authentication, native provider loading, UI layout and network behavior remain unverified.
+- **No runtime validation:** product, GUI, core, tests, installer, and real Codex requests remain reserved for the user. No installer or product ZIP was generated.
+
+## 0.11.1 preview scope (historical)
 
 - Fix Auto-off while stopped with a deterministic manual node fallback; while running, pin the actual current node without requiring another successful health test or updating the test timestamp.
 - Allow active subscription deletion: cancel and wait for usage/check tasks, stop only the owned proxy, release its desktop bridge without terminating Codex, retain the core preference, clear active state, and keep other subscriptions inactive. Shared-URL caches stay available to remaining entries.
@@ -35,7 +46,7 @@ This record separates compilation/static checks, user feedback, and historical r
 
 0.9 had compile/static checks only. Earlier fixtures and 0.5 user feedback below apply to their recorded versions, not to 0.9 or 0.10. The real Codex message check remains step 5 and is performed last.
 
-## 0.11.1 手动验收清单（未执行）
+## 0.12.0 手动验收清单（未执行）
 
 先完成前四组配置与交互检查；真实 Codex 消息和实际流量日志作为原第 5 项放在最后。套餐边界使用服务商测试响应或用户自行控制的响应，不修改、分享真实订阅凭据来制造错误。
 
@@ -43,11 +54,12 @@ This record separates compilation/static checks, user feedback, and historical r
 
 | 操作 | 预期结果 |
 | --- | --- |
-| 完全退出旧版，打开`dist/0.11.1/CodexProxy.exe` | 显示 0.11.1、浅蓝主题、图标与已有配置，默认停止，不启动正式代理或 Codex，不关闭其他启动器内核。 |
+| 完全退出旧版，打开`dist/0.12.0/CodexProxy.exe` | 显示 0.12.0、浅蓝主题、图标与已有配置，默认停止，不启动正式代理或 Codex，不关闭其他启动器内核。 |
 | 有节点快照时保持停止查看列表 | 节点、最后状态/延迟和检测时间可见；历史结果不伪装成刚测速或已接入 Codex。 |
 | 没有快照但有 YAML 缓存，打开当前订阅 | 仅短时使用不同端口的隔离内核读缓存，结束后清理，正式代理仍停止；未测速字段显示未知。 |
 | 停止后退出重开，或从另一订阅切回 | 读取同 URL 的持久快照，不串用其他订阅的列表、延迟或时间。 |
 | 重复双击 EXE，在停止/运行状态收起托盘并恢复 | 恢复同一管理器和托盘图标，保持原状态；多个轮询周期后正式代理不自行复活。 |
+| 停止、启动代理，分别查看概览地址 | 停止时显示已配置端口且不称监听中；内核未就绪时显示目标端口；仅就绪时显示运行端口。浏览器桥另列且未启动时明确标注。 |
 
 ### 2. 停止预选、普通测速与节点刷新
 
@@ -63,17 +75,22 @@ This record separates compilation/static checks, user feedback, and historical r
 | 停止时尝试检测 Codex，启动正式代理后再尝试 | 停止时不给出已执行成功的误导；正式代理已启动才允许此项检查。 |
 | 外部启动器拥有专用内核时尝试停止 | 提示拒绝代停，不按进程名称强制结束外部或无关代理。 |
 
-### 3. 订阅编辑与直接响应头套餐
+### 3. 订阅编辑、下载方式与响应头套餐
 
 | 操作 | 预期结果 |
 | --- | --- |
 | 停止时新增、编辑、隐藏/显示 URL，保存并启用 | 导入验证仅短时使用隔离内核，正式代理保持停止；当前订阅/节点更新，非法或下载失败保留原配置。 |
+| 首次导入时在设置依次选择直连、系统代理 | 节点与套餐均走所选方式；直连不读取普通 HTTP 系统/环境代理，系统模式采用默认代理；不修改 Windows 设置，不失败后自动换路。外部 TUN 仍可能影响直连。 |
+| 无节点或代理停止时选择当前专用代理并刷新 | 不自动启动正式代理或回退，明确提示需要先启动已有代理或选择直连/系统代理；套餐缓存仍可见。 |
+| 用已有节点启动代理，选择当前专用代理，再刷新节点/套餐 | 通过当前节点下载；临时验证端口独立，不把专用代理连回自己；成功后节点、套餐分别更新，选中节点不因路由方式改变。 |
+| 代理运行时修改下载方式，随后手动刷新节点 | 保存方式保持主代理运行状态；套餐按新方式读取，节点在刷新/启用/重启时加载新方式。此前后台原生 24 小时更新仍沿用已加载方式，5 分钟健康/自动优选保持。 |
+| 所选路径无法连接、订阅内容非法，或提交配置失败后再查看旧节点 | 显示失败，旧节点、缓存与配置尝试恢复，不能把旧结果称新下载成功；恢复未完成时明确提示检查。系统协议/认证不支持应报错，不直连降级。 |
 | 停止/运行时删除正在使用的订阅，分别测试有其他订阅及仅一个订阅 | 删除按钮可用，专用代理停止、当前订阅/节点/用量立即清空，不复活被删订阅；其他订阅保留但不自动启用，内核选择保留，用户 Codex 不被关闭。 |
 | 用量或 Codex 检测进行中删除当前订阅，并尝试点击刷新用量 | 先取消并等待旧任务，删除期间禁用手动用量刷新；旧结果不能回写或恢复被删缓存。重新启用同 URL 时可以重新读取用量。 |
 | 原启动器仍持有同一专用内核时，从默认停止的管理器删除当前订阅 | 拒绝删除并提示先从原启动器停止，现有 profile/订阅保持，不终止外部进程。 |
 | 删除后完全退出管理器再重开；存在同 URL 备用订阅时检查它 | 被删条目与当前配置不重新迁回；共享缓存仅在仍有同 URL 订阅时保留。重新启用/启动并重新打开 Codex 的真实消息仍最后验证。 |
 | 首次打开或切换订阅，保持停止 | 后台获取当前 URL 套餐；缓存按 URL 隔离，切 URL 取消旧请求，旧结果不能覆盖新订阅显示。 |
-| 节点预览失败或没有有效内核，保持停止查看套餐 | 缓存仍可显示，后台套餐 GET 独立执行，不被节点加载失败阻断。 |
+| 节点预览失败或没有有效内核，保持停止查看套餐 | 缓存仍可显示；直连/系统方式的后台套餐 GET 独立执行，不被节点加载失败阻断；专用代理方式明确要求先启动。 |
 | 标准头 `subscription-userinfo: upload=1024; download=2048; total=8192`，并提供有效未来 expire | 已用 3072 字节、总量 8192、剩余 5120，按界面单位换算，显示到期和有效进度；与本机流量统计区分。 |
 | 兼容前缀头如 `x-subscription-userinfo`，改变头名/字段名大小写 | 连字符连接的兼容后缀及字段可识别，不依赖 Mihomo provider 返回元数据。 |
 | 仅部分有效字段，或部分字段无效 | 有效字段保留，缺失/无效字段未知；上传与下载未齐全时不伪造已用。 |
@@ -81,7 +98,7 @@ This record separates compilation/static checks, user feedback, and historical r
 | 总量 0/缺失、到期 0/越界，或已用超过正总量 | 0/未知总量不解释为无限；无效到期有明确提示；超量剩余 0、进度最多 100%，真实已用保留。 |
 | 同 URL 先成功，再返回 HTTP 失败、超时或连接失败 | 保留同 URL 上次持久缓存，提示失败及上次读取时间，不将缓存时间冒充本次成功时间。 |
 | 保持停止退出重开，或切到另一套餐/无头订阅 | 缓存可跨重开读取但不串用其他 URL；成功无有效字段仍清为未知。 |
-| 点击刷新用量，观察节点/测速时间与正式状态 | 仅一次直连 GET 响应头读取，固定 UA `clash-verge/v2.5.9`，不轮换、不读正文；不更新节点或启动正式代理。 |
+| 点击刷新用量，观察节点/测速时间与正式状态 | 仅一次按所选路径 GET 响应头读取，固定 UA `clash-verge/v2.5.9`，不轮换、不读正文；不更新节点或启动正式代理。 |
 | 比较刷新节点与刷新用量 | 节点刷新会下载、验证、更新节点并安排一次后台套餐读取，不重复发起套餐 GET；两按钮不是同一操作。 |
 
 ### 4. 语言、内核与异步交互
@@ -92,6 +109,10 @@ This record separates compilation/static checks, user feedback, and historical r
 | 连续按 Tab/Shift+Tab 浏览按钮、下拉、节点单元格和订阅列表 | 没有截图中的虚线框；浅蓝焦点仍可辨识，键盘能导航和操作，不禁用整个页面焦点。 |
 | 在设置常规切换中英文，设状态刷新 10/30/60 秒，再完全退出重开 | 语言/间隔保留；页面、托盘与动态状态同步翻译；状态按所选间隔刷新，流量/日志仍每秒采样。恢复 5 秒可生效。 |
 | 在设置常规检测、手选 Codex 路径，再进入内核/更新 | 路径显示并保存；内核和更新嵌入主窗口，无独立设置弹窗；订阅编辑器仍可单独打开。 |
+| 停止时设置空闲端口并保存，再完全退出重开 | 混合端口保存并用于下次启动；控制器和认证保留。当前浏览器桥被释放但不关闭 Codex，需最后重新启动 Codex 验证。 |
+| 输入非数字、0、65536 或当前控制器端口；另用自己的测试程序占住 TCP/UDP 端口 | 保存拒绝并明确报错，原端口/配置不变，不终止占用进程；TCP 和 UDP 冲突分别测试。 |
+| 保存后由自己的测试程序占用该端口，再启动代理 | 再次检测并报错，不声称启动成功；释放占用后可重试。自动分配选择当时空闲端口，但不承诺预留。 |
+| 代理运行时尝试改端口；停止时输入未保存端口并等待轮询、切换语言 | 运行中端口编辑/保存禁用；未保存文本不被轮询或切换语言覆盖。错误保留可见，其他页面保持响应。 |
 | 停止时首次打开设置更新、手动检查并打开发布页 | 异步显示本机版本、发布版本、日期、渠道和比较；包含预览版，不启动代理、不传凭据、不自动下载；短时重进使用缓存。 |
 | API 被限流或网络失败，但公开版本清单可访问 | 显示公开版本清单来源、读取时间与版本比较；可能有 CDN 延迟，不能宣称实时 API 成功。API 在服务器等待时间前不重复请求。 |
 | 已成功查询后，两种来源都不可访问，再关闭并重开程序 | 仍显示上次已知版本、日期与原读取时间，明确本次失败/缓存；不显示“当前最新”作为成功结论。没缓存时显示未知。 |
@@ -111,6 +132,7 @@ This record separates compilation/static checks, user feedback, and historical r
 | 操作 | 预期结果 |
 | --- | --- |
 | 最后确认桌面路径，保存并退出旧 Codex，先启动代理再启动 Codex并发送消息 | 启动动作独立；已有实例或节点检测失败提示。真实账号和模型请求成功由用户确认。 |
+| 改过混合端口后，从管理器重新启动 Codex 再发新消息 | 概览显示新混合端口和新桥地址，实际请求走新端点；旧 Codex 不被程序强制结束，需用户主动退出重开。 |
 | 真实试用产生流量、手动或自动切节点再发新请求 | 观察本机速率/累计和日志目标/节点链路，清空记录生效；这些不是套餐累计。 |
 | 停止代理保留 Codex，再启动代理重试 | 连接暂不可用，日志活动连接结束，缓存节点仍可浏览/预选；原端口和桥接恢复后可重试新请求，已有流式请求允许重试。 |
 | 最后退出管理器 | 清理自有正式内核、临时任务和转发桥，保留 Codex；WSL 后端仍未验证。 |

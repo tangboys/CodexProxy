@@ -21,7 +21,8 @@ public sealed record Node(string Name, string Protocol, bool? Available, int? De
     public bool CanSelect => Available == true && !Current;
 }
 
-public sealed class CoreSession(string directory, Profile profile, bool localCacheOnly = false) : IAsyncDisposable
+public sealed class CoreSession(string directory, Profile profile, bool localCacheOnly = false,
+    NetworkSettings? networkSettings = null, Profile? subscriptionProxyProfile = null) : IAsyncDisposable
 {
     public const string Auto = "CODEX-AUTO", Select = "CODEX-SELECT", Provider = "subscription";
     public Profile Profile { get; set; } = profile;
@@ -37,7 +38,9 @@ public sealed class CoreSession(string directory, Profile profile, bool localCac
     public object Configuration()
     {
         var exclude = "Direct|Compatible|Reject|RejectDrop|Pass";
-        return new Dictionary<string, object>
+        var (providerProxy, upstream) = localCacheOnly ? ("DIRECT", (Dictionary<string, object>?)null) :
+            SubscriptionRouting.ProviderProxy((networkSettings ?? NetworkSettings.Load(DirectoryPath)).DownloadMode, Profile.Url, subscriptionProxyProfile);
+        var configuration = new Dictionary<string, object>
         {
             ["mixed-port"] = Profile.Port, ["bind-address"] = "127.0.0.1", ["allow-lan"] = false,
             ["mode"] = "rule", ["log-level"] = "warning", ["authentication"] = new[] { "codex:" + Profile.ProxyPassword },
@@ -47,7 +50,8 @@ public sealed class CoreSession(string directory, Profile profile, bool localCac
             ["proxy-providers"] = new Dictionary<string, object> { [ProviderName] = new Dictionary<string, object>
             {
                 ["type"] = localCacheOnly ? "file" : "http", ["url"] = Profile.Url, ["path"] = "./" + CacheName,
-                ["interval"] = 86400, ["proxy"] = "DIRECT", ["size-limit"] = 10485760,
+                ["interval"] = 86400, ["proxy"] = providerProxy, ["size-limit"] = 10485760,
+                ["header"] = new Dictionary<string, object> { ["User-Agent"] = new[] { "clash-verge/v2.5.9" } },
                 ["health-check"] = new Dictionary<string, object> { ["enable"] = !localCacheOnly, ["url"] = Profile.TestUrl,
                     ["expected-status"] = Profile.Expected, ["interval"] = 300, ["timeout"] = 5000, ["lazy"] = false }
             }},
@@ -59,6 +63,8 @@ public sealed class CoreSession(string directory, Profile profile, bool localCac
                     ["use"] = new[] { ProviderName }, ["exclude-type"] = exclude, ["empty-fallback"] = "REJECT" } },
             ["rules"] = new[] { "MATCH," + Select }
         };
+        if (upstream is not null) configuration["proxies"] = new[] { upstream };
+        return configuration;
     }
 
     public async Task<JsonNode?> ApiAsync(string path, HttpMethod? method = null, object? body = null, CancellationToken cancellation = default)

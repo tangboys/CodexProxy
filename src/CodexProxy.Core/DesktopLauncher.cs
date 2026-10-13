@@ -9,6 +9,7 @@ public sealed class DesktopLauncher(CoreSession core) : IAsyncDisposable
     private Process? process;
     private bool observed;
     public bool Started => process is not null && !process.HasExited;
+    public int? BridgePort => bridgeStarted ? bridge?.Port : null;
     public void ReplaceCore(CoreSession replacement) { core = replacement; observed = false; }
 
     public static ProcessStartInfo StartInfo(string executable, Profile profile)

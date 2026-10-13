@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
@@ -20,13 +21,14 @@ public sealed record SubscriptionMetadata(SubscriptionUsage? Usage, DateTimeOffs
         { return null; }
     }
 
-    public static async Task<SubscriptionMetadata> FetchAsync(string directory, string url, CancellationToken cancellation = default)
+    public static async Task<SubscriptionMetadata> FetchAsync(string directory, string url, CancellationToken cancellation = default,
+        IWebProxy? proxy = null)
     {
         cancellation.ThrowIfCancellationRequested();
         Profile.ValidateUrl(url);
         try
         {
-            using var client = new HttpClient(new SocketsHttpHandler { UseProxy = false,
+            using var client = new HttpClient(new SocketsHttpHandler { UseProxy = proxy is not null, Proxy = proxy,
                 ConnectTimeout = TimeSpan.FromSeconds(10), MaxAutomaticRedirections = 10, MaxResponseDrainSize = 0 })
                 { Timeout = TimeSpan.FromSeconds(20) };
             var uri = new Uri(url);
@@ -43,7 +45,7 @@ public sealed record SubscriptionMetadata(SubscriptionUsage? Usage, DateTimeOffs
                 request.RequestUri = new UriBuilder(uri) { UserName = "", Password = "" }.Uri;
             }
             using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode) throw new ProxyException(UiText.Get("无法刷新订阅套餐信息；已保留上次缓存，请检查直连网络或稍后重试。"));
+            if (!response.IsSuccessStatusCode) throw new ProxyException(UiText.Get("无法刷新订阅套餐信息；已保留上次缓存，请检查所选下载方式或稍后重试。"));
             SubscriptionUsage? usage = null;
             foreach (var header in response.Headers.OrderBy(h => h.Key.Equals("subscription-userinfo", StringComparison.OrdinalIgnoreCase) ? 0 : 1))
                 if (header.Key.Equals("subscription-userinfo", StringComparison.OrdinalIgnoreCase) ||
@@ -59,7 +61,7 @@ public sealed record SubscriptionMetadata(SubscriptionUsage? Usage, DateTimeOffs
         }
         catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { throw; }
         catch (Exception error) when (error is HttpRequestException or OperationCanceledException or IOException or UnauthorizedAccessException)
-        { throw new ProxyException(UiText.Get("无法刷新订阅套餐信息；已保留上次缓存，请检查直连网络或稍后重试。")); }
+        { throw new ProxyException(UiText.Get("无法刷新订阅套餐信息；已保留上次缓存，请检查所选下载方式或稍后重试。")); }
     }
 
     private static string CachePath(string directory, string url) => Path.Combine(directory,

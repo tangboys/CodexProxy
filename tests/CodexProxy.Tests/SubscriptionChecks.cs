@@ -40,6 +40,27 @@ static class SubscriptionChecks
         var names = await core.NodesAsync();
         check(service.Subscriptions.ActiveId == first.Id && names.Any(n => n.Name == Fixture.GoodName) && names.All(n => n.Name != "订阅 B JP"),
             "switching back restores one subscription without merging nodes");
+        if (OperatingSystem.IsWindows())
+        {
+            var yamlPath = Path.Combine(fixture.DirectoryPath, core.CacheName);
+            var snapshotPath = Path.ChangeExtension(yamlPath, ".nodes.json");
+            var configPath = Path.Combine(fixture.DirectoryPath, "config.json");
+            var oldYaml = File.ReadAllBytes(yamlPath);
+            var oldSnapshot = File.ReadAllBytes(snapshotPath);
+            var oldProfile = service.Profile;
+            var payload = fixture.Subscription.Payload;
+            try
+            {
+                fixture.Subscription.Payload = fixture.Nodes("回滚验证 JP");
+                using var lockedConfig = new FileStream(configPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                try { await service.RefreshAsync(); throw new Exception("Expected config commit failure"); }
+                catch (IOException) { }
+                check(File.ReadAllBytes(yamlPath).SequenceEqual(oldYaml) && File.ReadAllBytes(snapshotPath).SequenceEqual(oldSnapshot) &&
+                    service.Profile == oldProfile && core.Profile == oldProfile && (await core.NodesAsync()).Any(n => n.Name == Fixture.GoodName),
+                    "failed same-URL application restores YAML, snapshot and profile before keeping the original live nodes");
+            }
+            finally { fixture.Subscription.Payload = payload; }
+        }
         await service.DeleteSubscriptionAsync(second.Id);
         check(service.Subscriptions.Items.Count == 1 && service.Subscriptions.ActiveId == first.Id, "deleting inactive subscription leaves active proxy intact");
 

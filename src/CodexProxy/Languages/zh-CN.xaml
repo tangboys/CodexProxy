@@ -9,7 +9,7 @@
   <sys:String x:Key="WaitingForConnections">等待连接</sys:String>
   <sys:String x:Key="CodexOnlyTitle">仅为 Codex 设置代理</sys:String>
   <sys:String x:Key="CodexOnlyHint">无需开启系统全局代理</sys:String>
-  <sys:String x:Key="VersionLabel">Windows · 预览版 0.11.1</sys:String>
+  <sys:String x:Key="VersionLabel">Windows · 预览版 0.12</sys:String>
   <sys:String x:Key="ExitProxy">退出程序</sys:String>
   <sys:String x:Key="ExitProxyTooltip">关闭本工具及其独立内核；Codex 桌面进程会保留</sys:String>
   <sys:String x:Key="LanguageLabel">语言</sys:String>
@@ -122,4 +122,17 @@
   <sys:String x:Key="CodexPathSettings">Codex 程序路径</sys:String>
   <sys:String x:Key="ManageSubscriptions">管理订阅</sys:String>
   <sys:String x:Key="ViewNodes">查看节点</sys:String>
+  <sys:String x:Key="NetworkSettingsTitle">网络设置</sys:String>
+  <sys:String x:Key="SubscriptionDownloadModeLabel">订阅下载路由</sys:String>
+  <sys:String x:Key="DownloadModeDirect">直连</sys:String>
+  <sys:String x:Key="DownloadModeSystem">系统默认代理</sys:String>
+  <sys:String x:Key="DownloadModeDedicated">当前专用代理</sys:String>
+  <sys:String x:Key="SubscriptionRouteInitial">路由用于订阅节点和套餐请求，不修改系统代理。</sys:String>
+  <sys:String x:Key="ProxyPortLabel">专用代理端口</sys:String>
+  <sys:String x:Key="ProxyPortInputHint">留空为自动分配，或填写 1–65535；0 不是有效端口。</sys:String>
+  <sys:String x:Key="RestoreAutoPort">恢复自动</sys:String>
+  <sys:String x:Key="ProxyPortChangeHint">请先停止代理再修改端口。变更后需完全退出并重新启动 Codex。</sys:String>
+  <sys:String x:Key="NetworkSettingsInitial">端口保存前检查当前占用，正式启动时会再次检查。</sys:String>
+  <sys:String x:Key="ProxyAddressInitial">专用代理地址将在启用订阅后显示。</sys:String>
+  <sys:String x:Key="ProxyAddressHint">HTTP / SOCKS5 共用此端口并需要认证；此处不显示凭据。</sys:String>
 </ResourceDictionary>

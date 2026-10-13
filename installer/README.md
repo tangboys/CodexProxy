@@ -1,6 +1,6 @@
 # Installer preparation
 
-No 0.11.1 installer is provided. The current preview release distributes an EXE and license/source materials; installation, upgrade, and uninstall behavior has not been run for 0.9–0.11. Historical 0.4 installer evidence remains in [TEST-RESULTS.md](../TEST-RESULTS.md).
+No 0.12.0 installer is provided. The current preview release distributes an EXE and license/source materials; installation, upgrade, and uninstall behavior has not been run for 0.9–0.12. Historical 0.4 installer evidence remains in [TEST-RESULTS.md](../TEST-RESULTS.md).
 
 The Inno Setup source is retained for a later packaged release. The current explicit manifest contains 19 product files, including the app, root LICENSE, Chinese/English docs, build/architecture guides, third-party notices/source, and `skills/codex-proxy`. Before compiling, confirm the manifest still matches the published directory. Do not include user state, credentials, PDBs, old artifacts, or machine-specific skill bindings.
 
@@ -19,8 +19,8 @@ The embedded core is extracted to user state at runtime; it is not a separate `b
 From the repository root, after publishing and checking the current file manifest:
 
 ```powershell
-.\build-installer.ps1 -ReleaseDirectory .\dist\0.11.1 -OutputDirectory .\dist\installers -ValidateOnly
-.\build-installer.ps1 -ReleaseDirectory .\dist\0.11.1 -OutputDirectory .\dist\installers
+.\build-installer.ps1 -ReleaseDirectory .\dist\0.12.0 -OutputDirectory .\dist\installers -ValidateOnly
+.\build-installer.ps1 -ReleaseDirectory .\dist\0.12.0 -OutputDirectory .\dist\installers
 ```
 
 Use an [official Inno Setup compiler](https://jrsoftware.org/isdl.php); `-CompilerPath` can specify `ISCC.exe`. Obtain and verify build tools separately. These commands describe later packaging; they have not been executed for this preview. Default input is `dist/<project-version>` and output is `dist/installers`. The expected installer naming convention is `CodexProxy-<version>-setup-win-x64.exe`.

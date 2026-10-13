@@ -2,6 +2,13 @@
 
 Changes describe implementation scope, not test results. See [TEST-RESULTS.md](TEST-RESULTS.md) for validation boundaries.
 
+## 0.12.0 — Preview
+
+- Show the dedicated mixed HTTP/SOCKS endpoint and separate browser bridge on Overview, distinguishing configured, ready and stopped states.
+- Add a stopped-only mixed-port setting with automatic selection, TCP/UDP occupancy checks before saving and starting, and controller-conflict rejection. Port changes retain authentication and release the old bridge without terminating Codex; relaunch Codex to apply the endpoint.
+- Add manual Direct/System proxy/Current dedicated proxy subscription routes for both node downloads and usage. Keep native provider updates and health checks; no silent route fallback. Dedicated mode needs an already running proxy, with Direct/System for first import.
+- Validate subscriptions before replacing current caches/configuration and restore prior state on commit/reload failure. Compilation/static review only; runtime acceptance remains manual.
+
 ## 0.11.1 — Preview
 
 - Fix disabling Auto: pin the live current node without a mandatory retest, or use the selected/first preview node while stopped, then persist manual selection without inventing a new test time.

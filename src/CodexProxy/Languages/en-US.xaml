@@ -9,7 +9,7 @@
   <sys:String x:Key="WaitingForConnections">Waiting for connections</sys:String>
   <sys:String x:Key="CodexOnlyTitle">Proxy for Codex only</sys:String>
   <sys:String x:Key="CodexOnlyHint">No system proxy required</sys:String>
-  <sys:String x:Key="VersionLabel">Windows · Preview 0.11.1</sys:String>
+  <sys:String x:Key="VersionLabel">Windows · Preview 0.12</sys:String>
   <sys:String x:Key="ExitProxy">Exit app</sys:String>
   <sys:String x:Key="ExitProxyTooltip">Close this app and its proxy core; keep Codex running</sys:String>
   <sys:String x:Key="LanguageLabel">Language</sys:String>
@@ -122,4 +122,17 @@
   <sys:String x:Key="CodexPathSettings">Codex application path</sys:String>
   <sys:String x:Key="ManageSubscriptions">Manage subscriptions</sys:String>
   <sys:String x:Key="ViewNodes">View nodes</sys:String>
+  <sys:String x:Key="NetworkSettingsTitle">Network settings</sys:String>
+  <sys:String x:Key="SubscriptionDownloadModeLabel">Subscription download route</sys:String>
+  <sys:String x:Key="DownloadModeDirect">Direct</sys:String>
+  <sys:String x:Key="DownloadModeSystem">System default proxy</sys:String>
+  <sys:String x:Key="DownloadModeDedicated">Current dedicated proxy</sys:String>
+  <sys:String x:Key="SubscriptionRouteInitial">This route applies to subscription nodes and usage requests; it does not change the system proxy.</sys:String>
+  <sys:String x:Key="ProxyPortLabel">Dedicated proxy port</sys:String>
+  <sys:String x:Key="ProxyPortInputHint">Leave blank for automatic allocation, or enter 1–65535. Zero is not a valid port.</sys:String>
+  <sys:String x:Key="RestoreAutoPort">Restore auto</sys:String>
+  <sys:String x:Key="ProxyPortChangeHint">Stop the proxy before changing its port. Fully exit and relaunch Codex after a change.</sys:String>
+  <sys:String x:Key="NetworkSettingsInitial">The port is checked before saving and checked again when the proxy starts.</sys:String>
+  <sys:String x:Key="ProxyAddressInitial">The dedicated proxy address is shown after activating a subscription.</sys:String>
+  <sys:String x:Key="ProxyAddressHint">HTTP and SOCKS5 share this authenticated port. Credentials are not displayed here.</sys:String>
 </ResourceDictionary>

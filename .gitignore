@@ -25,6 +25,7 @@ kernel-settings.json
 desktop.json
 kernel.json
 ui-settings.json
+network-settings.json
 app-update-cache.json
 config.json
 subscription-*.yaml

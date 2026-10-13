@@ -17,7 +17,7 @@ public static class UiText
         ["切换"] = "Switch",
         ["本地代理请求失败（{0}）。"] = "Local proxy request failed ({0}).",
         ["无法连接本地代理内核，或请求已超时。"] = "Cannot connect to the local proxy core, or the request timed out.",
-        ["无法刷新订阅套餐信息；已保留上次缓存，请检查直连网络或稍后重试。"] = "Could not refresh subscription quota. The previous cache is kept. Check the direct connection or retry later.",
+        ["无法刷新订阅套餐信息；已保留上次缓存，请检查所选下载方式或稍后重试。"] = "Could not refresh subscription quota. The previous cache is kept. Check the selected download mode or retry later.",
         ["无法启动 Mihomo。"] = "Cannot start Mihomo.",
         ["Mihomo 启动失败，请本地检查 core.log。"] = "Mihomo failed to start. Check core.log locally.",
         ["35 秒内未导入节点。请检查订阅能否直接获取，以及格式是否受 Mihomo 支持。"] = "No nodes were imported within 35 seconds. Check that the subscription can be fetched directly and its format is supported by Mihomo.",
