@@ -30,6 +30,8 @@ The main proxy starts stopped. Cached previews do not start it. If a node snapsh
 
 Starting the main proxy applies the saved manual/automatic selection. Desktop launch requires a passing node check. Stopping the main proxy retains Codex and its existing bridge so it can reconnect on the saved ports; exiting the manager also disposes the bridge without terminating Codex.
 
+Disabling Auto pins the core's actual current node without another health test; stopped mode persists the selected/first preview node. Deleting the active subscription stops the owned core, disposes the bridge without terminating Codex, removes the active profile, and leaves other subscriptions inactive. Pending usage/check tasks are cancelled and awaited before deletion, and shared-URL caches remain for other saved entries. Reconfigure and relaunch Codex to apply a new subscription's endpoint/credentials.
+
 Core replacement retains proxy/controller ports and authentication values. It verifies a candidate before replacing the owned process and attempts to restore the previous configuration/core on failure. The desktop launcher updates its core reference while preserving the bridge endpoint.
 
 Long operations execute outside the UI thread. Conflicting configuration changes are serialized. Codex checks have their own cancellation and generation guards; stale results must not overwrite a new subscription. Changing subscription URL cancels old metadata requests and checks result ownership before updating the UI.

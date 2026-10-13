@@ -25,6 +25,8 @@ description: 打开 C# 桌面代理管理器，管理 Codex 专用订阅、检�
 
 管理器与下方 CLI 共用本地订阅配置和独立内核。管理器的代理已启动时，`test`、`select`、`auto`、`refresh` 可用于响应自然语言管理请求并复用现有内核，不改系统代理；管理器停止时，CLI 命令仍会临时启动自己的内核并在结束后清理。检查更新手动查询项目的 GitHub Releases，不自动安装。EXE 安装和路径绑定见 [references/usage.md](references/usage.md)。
 
+0.11.1 修复停止状态取消自动选择：固定当前、列表选中或首个预览节点并保存手动模式。当前订阅可以直接删除，停止自有代理并清空当前配置，不自动启用其他订阅、不结束用户 Codex；再次启用订阅后须完全退出旧 Codex，再从启动器打开以接入新配置。
+
 ## CLI 工作流程
 
 使用本技能目录下的 `codex-proxy.ps1` 或 `scripts/codex_proxy.py`。终端菜单支持输入订阅和选择节点，后台使用独立的 Mihomo 实例。Mihomo 原生解析 YAML、URI 列表和 Base64 订阅，不把订阅交给第三方转换服务。

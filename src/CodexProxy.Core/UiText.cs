@@ -52,7 +52,6 @@ public static class UiText
         ["所选订阅已不存在，请重新选择。"] = "The selected subscription no longer exists. Select another subscription.",
         ["请填写订阅名称。"] = "Enter a subscription name.",
         ["请选择已保存的订阅。"] = "Select a saved subscription.",
-        ["当前订阅正在使用，请先启用其他订阅再删除。"] = "This subscription is in use. Enable another subscription before deleting it.",
         ["不支持的界面语言。"] = "Unsupported interface language.",
         ["内置内核"] = "Bundled core",
         ["当前选择"] = "Current selection",

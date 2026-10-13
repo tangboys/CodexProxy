@@ -11,7 +11,7 @@ dotnet build .\src\CodexProxy\CodexProxy.csproj -c Release
 .\build.ps1
 ```
 
-The publish script targets `win-x64`, self-contained single-file output under `dist/<project-version>/`. For 0.11.0, the application is `dist/0.11.0/CodexProxy.exe`. It includes Mihomo as an embedded resource and copies documentation, licenses, and `skills/codex-proxy` alongside the app.
+The publish script targets `win-x64`, self-contained single-file output under `dist/<project-version>/`. For 0.11.1, the application is `dist/0.11.1/CodexProxy.exe`. It includes Mihomo as an embedded resource and copies documentation, licenses, and `skills/codex-proxy` alongside the app.
 
 Without `-CorePath`, the script uses `tools/fetch-mihomo.ps1` and `tools/mihomo.lock.json` to retrieve and verify the fixed official Mihomo v1.19.31 asset. It does not silently select the latest upstream version. See [THIRD-PARTY.md](../THIRD-PARTY.md) for provenance and corresponding-source material.
 

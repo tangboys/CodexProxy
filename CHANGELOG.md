@@ -2,6 +2,12 @@
 
 Changes describe implementation scope, not test results. See [TEST-RESULTS.md](TEST-RESULTS.md) for validation boundaries.
 
+## 0.11.1 — Preview
+
+- Fix disabling Auto: pin the live current node without a mandatory retest, or use the selected/first preview node while stopped, then persist manual selection without inventing a new test time.
+- Allow deleting the active subscription. Stop the owned proxy, clear active configuration and unused subscription caches, and keep other subscriptions inactive. Codex itself is not terminated; relaunch it after activating a subscription again.
+- Refresh the main page after subscription changes and cancel outstanding usage requests before active deletion. Compilation/static review only; runtime validation remains manual.
+
 ## 0.11.0 — Preview
 
 - Split the light-blue UI into Overview, Nodes, Logs, and Settings. Language, persisted status refresh interval, Codex path, core selection, and app updates live in Settings; core/update views are embedded.

@@ -9,7 +9,7 @@
   <sys:String x:Key="WaitingForConnections">等待连接</sys:String>
   <sys:String x:Key="CodexOnlyTitle">仅为 Codex 设置代理</sys:String>
   <sys:String x:Key="CodexOnlyHint">无需开启系统全局代理</sys:String>
-  <sys:String x:Key="VersionLabel">Windows · 预览版 0.11</sys:String>
+  <sys:String x:Key="VersionLabel">Windows · 预览版 0.11.1</sys:String>
   <sys:String x:Key="ExitProxy">退出程序</sys:String>
   <sys:String x:Key="ExitProxyTooltip">关闭本工具及其独立内核；Codex 桌面进程会保留</sys:String>
   <sys:String x:Key="LanguageLabel">语言</sys:String>

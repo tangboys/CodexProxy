@@ -2,7 +2,16 @@
 
 This record separates compilation/static checks, user feedback, and historical runtime checks. None establishes a successful real Codex login or model call for the current preview.
 
-## 0.11.0 preview scope
+## 0.11.1 preview scope
+
+- Fix Auto-off while stopped with a deterministic manual node fallback; while running, pin the actual current node without requiring another successful health test or updating the test timestamp.
+- Allow active subscription deletion: cancel and wait for usage/check tasks, stop only the owned proxy, release its desktop bridge without terminating Codex, retain the core preference, clear active state, and keep other subscriptions inactive. Shared-URL caches stay available to remaining entries.
+- **Compilation, 2026-10-13:** integration-fixture compilation and Release / win-x64 / self-contained publish succeeded with 0 compiler warnings/errors. Output: `dist/0.11.1/CodexProxy.exe`, file version `0.11.1.0`. Publishing followed fixture compilation so the embedded-core input is preserved.
+- Static XAML/resource checks passed with 123 unique matching keys per language and no missing dynamic references. No references to the obsolete synchronous deletion API remain. Static PE metadata inspection matched the embedded Mihomo resource to the locked official executable hash.
+- Fixture source now covers pinning despite failed health checks, unchanged test timestamps, refusal to delete external/borrowed cores, shared-cache preservation, active deletion, catalog-write failure rollback, and no active-profile resurrection. **These fixtures were compiled, not executed.**
+- **No runtime validation:** product, GUI, core, tests, installer, and real Codex requests remain reserved for the user. No installer or product ZIP was generated.
+
+## 0.11.0 preview scope (historical)
 
 - UI scope: Overview/Nodes/Logs/Settings pages, embedded Core/Updates, persisted general preferences, and blue keyboard focus feedback instead of dotted frames.
 - Update scope: GitHub API plus public release-manifest fallback, last-success metadata cache, explicit source/read time/failure state, and server retry deadlines. The manifest is maintained after Release publication.
@@ -26,7 +35,7 @@ This record separates compilation/static checks, user feedback, and historical r
 
 0.9 had compile/static checks only. Earlier fixtures and 0.5 user feedback below apply to their recorded versions, not to 0.9 or 0.10. The real Codex message check remains step 5 and is performed last.
 
-## 0.11.0 手动验收清单（未执行）
+## 0.11.1 手动验收清单（未执行）
 
 先完成前四组配置与交互检查；真实 Codex 消息和实际流量日志作为原第 5 项放在最后。套餐边界使用服务商测试响应或用户自行控制的响应，不修改、分享真实订阅凭据来制造错误。
 
@@ -34,7 +43,7 @@ This record separates compilation/static checks, user feedback, and historical r
 
 | 操作 | 预期结果 |
 | --- | --- |
-| 完全退出旧版，打开`dist/0.11.0/CodexProxy.exe` | 显示 0.11、浅蓝主题、图标与已有配置，默认停止，不启动正式代理或 Codex，不关闭其他启动器内核。 |
+| 完全退出旧版，打开`dist/0.11.1/CodexProxy.exe` | 显示 0.11.1、浅蓝主题、图标与已有配置，默认停止，不启动正式代理或 Codex，不关闭其他启动器内核。 |
 | 有节点快照时保持停止查看列表 | 节点、最后状态/延迟和检测时间可见；历史结果不伪装成刚测速或已接入 Codex。 |
 | 没有快照但有 YAML 缓存，打开当前订阅 | 仅短时使用不同端口的隔离内核读缓存，结束后清理，正式代理仍停止；未测速字段显示未知。 |
 | 停止后退出重开，或从另一订阅切回 | 读取同 URL 的持久快照，不串用其他订阅的列表、延迟或时间。 |
@@ -45,6 +54,8 @@ This record separates compilation/static checks, user feedback, and historical r
 | 操作 | 预期结果 |
 | --- | --- |
 | 停止时预选未检测或上次不可用节点，再尝试自动模式 | 可以保存预选，名称/国旗与模式同步；不启动正式代理，不宣称预选已可用。 |
+| 停止时启用自动模式，选中某行后取消勾选；再尝试不选任何行取消 | 取消后保持手动：优先当前节点，否则列表选中行，再否则首节点；正式代理仍停止。重开后不重新勾上，预选保留。 |
+| 运行自动模式时取消勾选，包括当前节点上次检测不可用的情形 | 固定内核当时实际使用的节点，不强制重新测速，不伪造新的检测时间；明确显示手动模式，不把固定操作当可达性验证。 |
 | 停止预选后重开，再点击启动代理 | 手动或自动选择保留，启动后测速并应用预选；后续启动 Codex 仍要求所选节点检测通过。 |
 | 停止时点击检测节点 | 使用缓存和临时隔离内核显式测速，更新状态、延迟及检测时间，清理后正式代理仍停止。 |
 | 停止时点击刷新节点 | 临时下载验证当前订阅并测速，更新快照后清理，不启动正式代理；之后后台另取套餐。 |
@@ -57,6 +68,10 @@ This record separates compilation/static checks, user feedback, and historical r
 | 操作 | 预期结果 |
 | --- | --- |
 | 停止时新增、编辑、隐藏/显示 URL，保存并启用 | 导入验证仅短时使用隔离内核，正式代理保持停止；当前订阅/节点更新，非法或下载失败保留原配置。 |
+| 停止/运行时删除正在使用的订阅，分别测试有其他订阅及仅一个订阅 | 删除按钮可用，专用代理停止、当前订阅/节点/用量立即清空，不复活被删订阅；其他订阅保留但不自动启用，内核选择保留，用户 Codex 不被关闭。 |
+| 用量或 Codex 检测进行中删除当前订阅，并尝试点击刷新用量 | 先取消并等待旧任务，删除期间禁用手动用量刷新；旧结果不能回写或恢复被删缓存。重新启用同 URL 时可以重新读取用量。 |
+| 原启动器仍持有同一专用内核时，从默认停止的管理器删除当前订阅 | 拒绝删除并提示先从原启动器停止，现有 profile/订阅保持，不终止外部进程。 |
+| 删除后完全退出管理器再重开；存在同 URL 备用订阅时检查它 | 被删条目与当前配置不重新迁回；共享缓存仅在仍有同 URL 订阅时保留。重新启用/启动并重新打开 Codex 的真实消息仍最后验证。 |
 | 首次打开或切换订阅，保持停止 | 后台获取当前 URL 套餐；缓存按 URL 隔离，切 URL 取消旧请求，旧结果不能覆盖新订阅显示。 |
 | 节点预览失败或没有有效内核，保持停止查看套餐 | 缓存仍可显示，后台套餐 GET 独立执行，不被节点加载失败阻断。 |
 | 标准头 `subscription-userinfo: upload=1024; download=2048; total=8192`，并提供有效未来 expire | 已用 3072 字节、总量 8192、剩余 5120，按界面单位换算，显示到期和有效进度；与本机流量统计区分。 |

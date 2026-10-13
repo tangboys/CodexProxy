@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using StoredProfile = CodexProxy.Core.Profile;
 
 namespace CodexProxy.Core;
@@ -183,6 +185,17 @@ public sealed class ProxyService(string directory) : IAsyncDisposable
         await (profile with { Selected = name }).SaveAsync(DirectoryPath, cancellation).ConfigureAwait(false);
     }
 
+    public async Task DisableAutomaticAsync(string fallbackName, CancellationToken cancellation = default)
+    {
+        if (!ProxyEnabled)
+        {
+            await SelectNodeAsync(fallbackName, cancellation).ConfigureAwait(false);
+            return;
+        }
+        var current = await EnsureAsync(cancellation).ConfigureAwait(false);
+        await current.PinCurrentAsync(fallbackName, cancellation).ConfigureAwait(false);
+    }
+
     private async Task<NodeSnapshot?> CachedNodesAsync(Profile profile, bool probe, CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested();
@@ -252,11 +265,70 @@ public sealed class ProxyService(string directory) : IAsyncDisposable
         (catalog with { ActiveId = id }).Save(DirectoryPath);
     }
 
-    public void DeleteSubscription(string id)
+    public async Task<bool> DeleteSubscriptionAsync(string id, CancellationToken cancellation = default)
     {
-        var catalog = Subscriptions;
-        if (id == catalog.ActiveId) throw new ProxyException(UiText.Get("当前订阅正在使用，请先启用其他订阅再删除。"));
-        (catalog with { Items = catalog.Items.Where(s => s.Id != id).ToList() }).Save(DirectoryPath);
+        cancellation.ThrowIfCancellationRequested();
+        var previous = Profile;
+        var catalog = SubscriptionCatalog.Load(DirectoryPath, previous);
+        var entry = catalog.Items.FirstOrDefault(s => s.Id == id)
+            ?? throw new ProxyException(UiText.Get("所选订阅已不存在，请重新选择。"));
+        var active = catalog.ActiveId == id;
+        if (active && previous is not null && Core is null)
+        {
+            await using var probe = new CoreSession(DirectoryPath, previous);
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+            timeout.CancelAfter(TimeSpan.FromSeconds(3));
+            try
+            {
+                if (await probe.RunningAsync(timeout.Token).ConfigureAwait(false))
+                    throw new ProxyException(UiText.Language == "en-US"
+                        ? "Another launcher owns the running core. Stop it from that launcher before deleting the active subscription."
+                        : "当前内核由另一个启动器运行，请先在原启动器停止代理，再删除当前订阅。");
+            }
+            catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
+            { throw new ProxyException(UiText.Language == "en-US"
+                ? "Could not confirm that the dedicated core is stopped. Try deleting the subscription again later."
+                : "无法确认专用内核已停止，请稍后再删除订阅。"); }
+        }
+        if (active) await StopProxyAsync(cancellation).ConfigureAwait(false);
+        await StoredProfile.PrivateDirectoryAsync(DirectoryPath, cancellation).ConfigureAwait(false);
+        if (active && previous is not null)
+        {
+            await StoredProfile.WriteJsonAsync(Path.Combine(DirectoryPath, "kernel.json"), new KernelSettings(previous.CorePath), cancellation).ConfigureAwait(false);
+            if (Desktop is not null) { await Desktop.DisposeAsync().ConfigureAwait(false); Desktop = null; }
+            File.Delete(Path.Combine(DirectoryPath, "config.json"));
+        }
+        var remaining = catalog.Items.Where(s => s.Id != id).ToList();
+        if (!remaining.Any(s => s.Url == entry.Url))
+        {
+            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(entry.Url))).ToLowerInvariant();
+            foreach (var file in new[] { "subscription-" + hash[..16] + ".yaml", "subscription-" + hash[..16] + ".nodes.json",
+                "subscription-metadata-" + hash + ".json" })
+            {
+                cancellation.ThrowIfCancellationRequested();
+                File.Delete(Path.Combine(DirectoryPath, file));
+            }
+        }
+        var profileRemoved = false;
+        try
+        {
+            if (active) { File.Delete(Path.Combine(DirectoryPath, "profile.json")); profileRemoved = true; }
+            await StoredProfile.WriteJsonAsync(Path.Combine(DirectoryPath, "subscriptions.json"),
+                catalog with { Items = remaining, ActiveId = active ? null : catalog.ActiveId }, cancellation).ConfigureAwait(false);
+        }
+        catch
+        {
+            if (profileRemoved && previous is not null)
+            {
+                try { await previous.SaveAsync(DirectoryPath).ConfigureAwait(false); }
+                catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+                { throw new ProxyException(UiText.Language == "en-US"
+                    ? "Deletion did not complete and the proxy is stopped. Reopen Subscription settings to check the saved entries."
+                    : "删除未完成，代理已停止。请重新打开订阅设置检查已保存条目。"); }
+            }
+            throw;
+        }
+        return active;
     }
 
     private async Task ApplySubscriptionAsync(string url, string? corePath, CancellationToken cancellation = default, bool probe = false)

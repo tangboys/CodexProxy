@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using CodexProxy.Core;
 
 namespace CodexProxy.Tests;
@@ -38,9 +40,7 @@ static class SubscriptionChecks
         var names = await core.NodesAsync();
         check(service.Subscriptions.ActiveId == first.Id && names.Any(n => n.Name == Fixture.GoodName) && names.All(n => n.Name != "订阅 B JP"),
             "switching back restores one subscription without merging nodes");
-        try { service.DeleteSubscription(first.Id); throw new Exception("Expected active deletion rejection"); }
-        catch (ProxyException) { check(service.Subscriptions.Items.Count == 2, "active subscription cannot be deleted"); }
-        service.DeleteSubscription(second.Id);
+        await service.DeleteSubscriptionAsync(second.Id);
         check(service.Subscriptions.Items.Count == 1 && service.Subscriptions.ActiveId == first.Id, "deleting inactive subscription leaves active proxy intact");
 
         var empty = Path.Combine(fixture.DirectoryPath, "empty-state");
@@ -48,5 +48,61 @@ static class SubscriptionChecks
         var pending = await fresh.SaveSubscriptionEntryAsync(null, "首个订阅", original.Url, null, false);
         check(fresh.Profile is null && fresh.Subscriptions.ActiveId is null && fresh.Subscriptions.Items.Single().Id == pending.Id,
             "first subscription can be saved before a core is configured or started");
+        var backup = await fresh.SaveSubscriptionEntryAsync(null, "保留备用", original.Url + "&remaining=1", null, false);
+        var shared = await fresh.SaveSubscriptionEntryAsync(null, "共享链接", original.Url, null, false);
+        await fresh.ActivateSubscriptionAsync(pending.Id, original.CorePath);
+        var owned = await fresh.StartProxyAsync();
+        await SubscriptionMetadata.FetchAsync(empty, pending.Url);
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(pending.Url))).ToLowerInvariant();
+        string[] cacheFiles = [Path.Combine(empty, "subscription-" + hash[..16] + ".yaml"),
+            Path.Combine(empty, "subscription-" + hash[..16] + ".nodes.json"),
+            Path.Combine(empty, "subscription-metadata-" + hash + ".json")];
+        var profilePath = Path.Combine(empty, "profile.json");
+        var catalogPath = Path.Combine(empty, "subscriptions.json");
+        var profileBeforeDelete = File.ReadAllText(profilePath);
+        var catalogBeforeDelete = File.ReadAllText(catalogPath);
+        await using (var otherLauncher = new ProxyService(empty))
+        {
+            try { await otherLauncher.DeleteSubscriptionAsync(pending.Id); throw new Exception("Expected external core rejection"); }
+            catch (ProxyException)
+            {
+                check(otherLauncher.Core is null && !otherLauncher.ProxyEnabled && await owned.RunningAsync() &&
+                    File.ReadAllText(profilePath) == profileBeforeDelete && File.ReadAllText(catalogPath) == catalogBeforeDelete,
+                    "active deletion detects an external core even when this manager is stopped and has no session");
+            }
+            var borrowed = await otherLauncher.StartProxyAsync();
+            try { await otherLauncher.DeleteSubscriptionAsync(pending.Id); throw new Exception("Expected borrowed core rejection"); }
+            catch (ProxyException)
+            {
+                check(!borrowed.OwnsProcess && await owned.RunningAsync() && File.ReadAllText(profilePath) == profileBeforeDelete &&
+                    File.ReadAllText(catalogPath) == catalogBeforeDelete, "active deletion refuses a live borrowed core without changing saved subscriptions");
+            }
+        }
+        check(cacheFiles.All(File.Exists), "active subscription has separate node, YAML and quota caches");
+        await fresh.DeleteSubscriptionAsync(shared.Id);
+        check(cacheFiles.All(File.Exists) && fresh.Subscriptions.ActiveId == pending.Id && await owned.RunningAsync(),
+            "deleting a duplicate subscription preserves shared URL caches and the active core");
+        catalogBeforeDelete = File.ReadAllText(catalogPath);
+        if (OperatingSystem.IsWindows())
+        {
+            using (var lockedCatalog = new FileStream(catalogPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                try { await fresh.DeleteSubscriptionAsync(pending.Id); throw new Exception("Expected catalog commit failure"); }
+                catch (IOException) { }
+            }
+            check(!fresh.ProxyEnabled && fresh.Core is null && File.ReadAllText(profilePath) == profileBeforeDelete &&
+                File.ReadAllText(catalogPath) == catalogBeforeDelete && fresh.Subscriptions.ActiveId == pending.Id,
+                "failed catalog commit restores the original profile and entries while keeping the proxy stopped");
+        }
+        var deletedActive = await fresh.DeleteSubscriptionAsync(pending.Id);
+        check(deletedActive && !fresh.ProxyEnabled && fresh.Core is null && fresh.Profile is null &&
+            !File.Exists(profilePath) && !File.Exists(Path.Combine(empty, "config.json")) && cacheFiles.All(p => !File.Exists(p)),
+            "active deletion stops the owned proxy and removes its profile, runtime config and unshared caches");
+        check(fresh.Subscriptions.ActiveId is null && fresh.Subscriptions.Items.Single().Id == backup.Id &&
+            fresh.SelectedKernelPath == original.CorePath, "active deletion preserves backup subscriptions and the chosen core without auto-activating a backup");
+        await using var reopened = new ProxyService(empty);
+        check(reopened.Profile is null && reopened.Subscriptions.ActiveId is null && reopened.Subscriptions.Items.Single().Id == backup.Id &&
+            !reopened.ProxyEnabled && reopened.Core is null, "deleted active subscription does not migrate back or restart after reopening state");
+        check(await core.RunningAsync(), "isolated active deletion leaves the original fixture core alive for subsequent checks");
     }
 }

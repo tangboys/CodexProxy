@@ -207,7 +207,7 @@ public partial class MainWindow : Window
         ProxyStopped = !service.ProxyEnabled;
         AutoCheck.IsEnabled = TestNodesButton.IsEnabled = ProxyActionsEnabled && nodes.Count > 0;
         RefreshNodesButton.IsEnabled = ProxyActionsEnabled && subscriptionUrl is not null;
-        RefreshUsageButton.IsEnabled = !exiting && subscriptionUrl is not null && usageCancellation is null;
+        RefreshUsageButton.IsEnabled = ProxyActionsEnabled && subscriptionUrl is not null && usageCancellation is null;
         DetectPathButton.IsEnabled = BrowsePathButton.IsEnabled = ProxyActionsEnabled && !pathBusy;
         LaunchButton.IsEnabled = ProxyActionsEnabled && CoreAvailable && !pathBusy;
         ProxyToggleButton.IsEnabled = ProxyActionsEnabled;
@@ -440,7 +440,7 @@ public partial class MainWindow : Window
 
     private async void RefreshClick(object sender, RoutedEventArgs e) => await RefreshSubscriptionAsync();
     private void RefreshUsageClick(object sender, RoutedEventArgs e)
-    { if (!exiting && usageCancellation is null && subscriptionUrl is { } url) BeginUsageRefresh(url); }
+    { if (!busy && !exiting && usageCancellation is null && subscriptionUrl is { } url) BeginUsageRefresh(url); }
     private Task RefreshSubscriptionAsync() => RunAsync(async () =>
     { await StopCodexCheckAsync(); await Task.Run(service.RefreshAsync); codexChecks.Clear(); var previousUrl = subscriptionUrl; await ReloadAsync();
         if (subscriptionUrl is { } url && url == previousUrl && usageCancellation is null) BeginUsageRefresh(url); }, T("订阅节点已刷新，套餐用量在后台读取。请重新检测 Codex 可达性。", "Nodes refreshed; fetching quota in the background. Check Codex reachability again."));
@@ -609,13 +609,14 @@ public partial class MainWindow : Window
     private async void AutoClick(object sender, RoutedEventArgs e)
     {
         var automatic = AutoCheck.IsChecked == true;
-        var name = automatic ? CoreSession.Auto : nodes.FirstOrDefault(n => n.Current)?.Name;
+        var name = automatic ? CoreSession.Auto : nodes.FirstOrDefault(n => n.Current)?.Name ??
+            (NodeGrid.SelectedItem as Node)?.Name ?? nodes.FirstOrDefault()?.Name;
         await RunAsync(async () =>
         {
             if (name is null) throw new ProxyException(T("请直接在节点列表中选择要固定的节点。", "Choose a node directly from the list to pin it."));
-            await Task.Run(() => service.SelectNodeAsync(name)); await ReloadAsync();
+            await Task.Run(() => automatic ? service.SelectNodeAsync(name) : service.DisableAutomaticAsync(name)); await ReloadAsync();
         }, !service.ProxyEnabled ? T("已保存预选模式，启动代理后生效。", "Selection mode saved. It takes effect when the proxy starts.") :
-            automatic ? T("已开启自动选择，每 5 分钟检测一次。", "Automatic selection enabled. Nodes are checked every 5 minutes.") : T("已固定当前节点。", "Current node pinned."));
+            automatic ? T("已开启自动选择，每 5 分钟检测一次。", "Automatic selection enabled. Nodes are checked every 5 minutes.") : T("已关闭自动选择并固定节点。", "Automatic selection disabled and node pinned."));
         AutoCheck.IsChecked = selectedNode == CoreSession.Auto;
     }
 
@@ -758,14 +759,30 @@ public partial class MainWindow : Window
     {
         if (exiting) return;
         if (subscriptionWindow is not null) { subscriptionWindow.Activate(); return; }
-        var window = new SubscriptionWindow(service, ExecuteProxyOperationAsync) { Owner = this };
+        var window = new SubscriptionWindow(service, ExecuteProxyOperationAsync, StopUsageRefreshAsync) { Owner = this };
         subscriptionWindow = window;
+        window.Applied += SubscriptionApplied;
         window.Closed += async (_, _) =>
         {
             var changed = window.Changed;
+            window.Applied -= SubscriptionApplied;
             subscriptionWindow = null;
             if (changed && !exiting) await RunAsync(() => ReloadAsync(), null, false);
         };
         window.Show();
+    }
+
+    private async Task StopUsageRefreshAsync()
+    {
+        usageCancellation?.Cancel();
+        if (usageTask is { } pending) await pending;
+        usageRequestedUrl = null;
+    }
+
+    private async void SubscriptionApplied()
+    {
+        if (exiting) return;
+        if (!service.ProxyEnabled) traffic.Unavailable();
+        await RunAsync(() => ReloadAsync(), null, false);
     }
 }

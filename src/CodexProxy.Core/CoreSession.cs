@@ -191,6 +191,33 @@ public sealed class CoreSession(string directory, Profile profile, bool localCac
         await Profile.SaveAsync(DirectoryPath, cancellation).ConfigureAwait(false);
     }
 
+    public async Task PinCurrentAsync(string fallbackName, CancellationToken cancellation = default)
+    {
+        var previous = Profile;
+        var previousSelection = (await ApiAsync("/proxies/" + Select, cancellation: cancellation).ConfigureAwait(false))?["now"]?.GetValue<string>() ?? previous.Selected;
+        var nodes = await NodesAsync(cancellation).ConfigureAwait(false);
+        var name = nodes.FirstOrDefault(n => n.Current)?.Name ??
+            nodes.FirstOrDefault(n => n.Name == fallbackName)?.Name ?? nodes.FirstOrDefault()?.Name;
+        if (name is null) throw new ProxyException(UiText.Language == "en-US"
+            ? "There are no nodes to pin. Refresh the subscription first."
+            : "当前没有可固定的节点，请先刷新订阅。");
+        var selected = previous with { Selected = name };
+        try
+        {
+            await ApiAsync("/proxies/" + Select, HttpMethod.Put, new { name }, cancellation).ConfigureAwait(false);
+            await selected.SaveAsync(DirectoryPath, cancellation).ConfigureAwait(false);
+            Profile = selected;
+        }
+        catch
+        {
+            Profile = previous;
+            using var rollback = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            try { await ApiAsync("/proxies/" + Select, HttpMethod.Put, new { name = previousSelection }, rollback.Token).ConfigureAwait(false); }
+            catch { } // Preserve the original failure if the core cannot restore its selection.
+            throw;
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (process is { } owned)

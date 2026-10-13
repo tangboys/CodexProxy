@@ -10,9 +10,9 @@ This is an unofficial community project, with no affiliation to OpenAI, v2rayN, 
 
 ## Get it
 
-Get the **0.11.0 preview** from [Releases](https://github.com/tangboys/CodexProxy/releases). `CodexProxy.exe` runs directly with the .NET runtime and Mihomo embedded. Licenses, notices, and corresponding source are provided with the Release and in this repository. The preview has not received runtime validation.
+Get the **0.11.1 preview** from [Releases](https://github.com/tangboys/CodexProxy/releases). `CodexProxy.exe` runs directly with the .NET runtime and Mihomo embedded. Licenses, notices, and corresponding source are provided with the Release and in this repository. The preview has not received runtime validation.
 
-No product ZIP or installer is provided for this version. Follow [BUILDING.md](docs/BUILDING.md) to produce `dist/0.11.0/CodexProxy.exe` yourself. Future portable releases should use a complete `CodexProxy-<version>-win-x64.zip`; redistribution must keep the license and corresponding-source materials available. GitHub's source download is not a runnable application.
+No product ZIP or installer is provided for this version. Follow [BUILDING.md](docs/BUILDING.md) to produce `dist/0.11.1/CodexProxy.exe` yourself. Future portable releases should use a complete `CodexProxy-<version>-win-x64.zip`; redistribution must keep the license and corresponding-source materials available. GitHub's source download is not a runnable application.
 
 ## Quick start
 
@@ -36,6 +36,8 @@ Status refresh can be saved as 5, 10, 30, or 60 seconds; traffic and logs still 
 ## Nodes, subscription usage, and local traffic
 
 - Node snapshots persist per subscription URL, with the last results and test time. Flags are inferred from node names and do not verify server geography.
+- Disabling Auto pins the core's current node without retesting, or the selected/first preview node while stopped, and persists manual selection. Normal node switches and startup retain their existing checks.
+- The active subscription can be deleted: the owned proxy stops and active configuration is cleared. Other subscriptions stay saved without automatic activation. Activate a subscription again, start the proxy, and save your work and fully exit/relaunch Codex to apply new proxy ports and credentials.
 - Core settings support bundled **Mihomo v1.19.31** or another compatible local Mihomo. Applying a core while stopped keeps it stopped; switching a running core can briefly interrupt connections. Clash GUI, Xray, and sing-box are not drop-in cores.
 - Subscription usage comes from provider response headers and can be refreshed while stopped. A failed request keeps the last cache for the same URL and displays a warning; a successful response without valid fields displays unknown. An unknown or zero total does not mean unlimited.
 - **Refresh usage** updates usage only. **Refresh nodes** imports nodes and separately retrieves usage. Usage loading does not depend on a successful node preview or a valid core.

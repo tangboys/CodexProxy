@@ -10,18 +10,21 @@ public partial class SubscriptionWindow : Window
 {
     private readonly ProxyService service;
     private readonly Func<Func<Task>, bool, Task> executeProxyOperation;
+    private readonly Func<Task>? beforeActiveDelete;
     private bool saving, loading, closed;
     private string? editingId;
     private string initialCorePath = "";
     private SubscriptionCatalog? catalog;
     public bool Changed { get; private set; }
     public bool ActiveChanged { get; private set; }
+    public event Action? Applied;
 
-    public SubscriptionWindow(ProxyService service, Func<Func<Task>, bool, Task> executeProxyOperation)
+    public SubscriptionWindow(ProxyService service, Func<Func<Task>, bool, Task> executeProxyOperation, Func<Task>? beforeActiveDelete = null)
     {
         InitializeComponent();
         this.service = service;
         this.executeProxyOperation = executeProxyOperation;
+        this.beforeActiveDelete = beforeActiveDelete;
         Loaded += async (_, _) => await LoadAsync();
         Closing += (_, e) =>
         {
@@ -86,7 +89,7 @@ public partial class SubscriptionWindow : Window
         UrlPassword.Visibility = showUrl ? Visibility.Collapsed : Visibility.Visible;
         UrlText.Visibility = showUrl ? Visibility.Visible : Visibility.Collapsed;
         RefreshLanguage();
-        DeleteButton.IsEnabled = !saving && entry is { Active: false };
+        DeleteButton.IsEnabled = !saving && entry is not null;
     }
 
     public void RefreshLanguage()
@@ -100,7 +103,8 @@ public partial class SubscriptionWindow : Window
         var entry = SubscriptionList.SelectedItem as Subscription;
         EntryTitle.Text = entry is null ? T("新增订阅", "Add subscription") : entry.Active ? T("编辑当前订阅", "Edit active subscription") : T("编辑备用订阅", "Edit saved subscription");
         UrlHint.Text = entry is null ? T("填写 HTTP(S) 链接；可先保存，稍后再启用。", "Enter an HTTP(S) URL. You can save it now and activate it later.") : T("可直接修改已保存的链接；留空保留原链接。", "Edit the saved URL directly. Leave it blank to keep the existing URL.");
-        DeleteButton.ToolTip = entry?.Active == true ? T("请先启用其他订阅，再删除当前订阅", "Activate another subscription before deleting this one.") : null;
+        DeleteButton.ToolTip = entry?.Active == true ? T("删除后停止专用代理并清空当前选择，其他订阅保留，不会关闭 Codex。", "Deleting stops the dedicated proxy and clears the active choice. Other subscriptions are kept; Codex is not closed.") : null;
+        DeleteHint.Text = entry?.Active == true ? T("删除当前订阅会停止专用代理；不会自动启用其他订阅。", "Deleting the active subscription stops the proxy; no other subscription is activated automatically.") : "";
         var wasLoading = loading;
         loading = true;
         try { SubscriptionList.Items.Refresh(); SubscriptionList.SelectedItem = entry; }
@@ -145,7 +149,7 @@ public partial class SubscriptionWindow : Window
             SaveButton.IsEnabled = ActivateButton.IsEnabled = CancelButton.IsEnabled = !value;
         NameText.IsReadOnly = UrlText.IsReadOnly = CorePath.IsReadOnly = value;
         UrlPassword.IsEnabled = !value;
-        DeleteButton.IsEnabled = !value && SubscriptionList.SelectedItem is Subscription { Active: false };
+        DeleteButton.IsEnabled = !value && SubscriptionList.SelectedItem is Subscription;
         Progress.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -192,6 +196,7 @@ public partial class SubscriptionWindow : Window
                 if (updated is not null) ReloadList(updated, savedEntry.Id, true);
             }
             SetSaving(false);
+            if (savedEntry is not null && !closed) Applied?.Invoke();
         }
     }
 
@@ -201,25 +206,34 @@ public partial class SubscriptionWindow : Window
         var id = editingId;
         SubscriptionCatalog? updated = null;
         var deleted = false;
+        var deletedActive = false;
         SetSaving(true);
+        ShowMessage(() => T("正在删除订阅；删除当前订阅将停止专用代理…", "Deleting the subscription. Deleting the active subscription stops the dedicated proxy…"));
         try
         {
-            await executeProxyOperation(() => Task.Run(() =>
+            await executeProxyOperation(async () =>
             {
-                service.DeleteSubscription(id);
+                var active = await Task.Run(() => service.Subscriptions.ActiveId == id);
+                if (active && beforeActiveDelete is not null) await beforeActiveDelete();
+                deletedActive = await Task.Run(() => service.DeleteSubscriptionAsync(id));
                 deleted = true;
-                updated = service.Subscriptions;
-            }), false);
-            ShowMessage(() => T("备用订阅已删除，当前连接保持原样。", "Subscription deleted. The current connection is unchanged."));
+                updated = await Task.Run(() => service.Subscriptions);
+            }, true);
+            if (deleted) ShowMessage(() => deletedActive
+                ? T("当前订阅已删除，专用代理已停止；其他订阅保留且未自动启用，不会关闭 Codex。重新配置后请退出旧 Codex 再启动。", "The active subscription was deleted and the dedicated proxy stopped. Other subscriptions are kept and none was activated; Codex is not closed. Exit the old Codex instance before launching it after reconfiguring.")
+                : T("备用订阅已删除，当前连接保持原样。", "Subscription deleted. The current connection is unchanged."));
         }
         catch (ProxyException error) { ShowMessage(() => error.Message); }
-        catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
-        { ShowMessage(() => T("无法保存订阅列表，请检查本地文件权限。", "Could not save the subscription list. Check local file permissions.")); }
+        catch (OperationCanceledException) { ShowMessage(() => T("删除已取消，请检查当前订阅状态。", "Deletion was cancelled. Check the current subscription status.")); }
+        catch (Exception error) when (error is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException or Win32Exception)
+        { ShowMessage(() => T("删除未完成，请检查本地文件权限，并在概览确认代理状态。", "Deletion did not complete. Check local file permissions and the proxy status in Overview.")); }
         finally
         {
             Changed |= deleted;
+            ActiveChanged |= deletedActive;
             if (updated is not null) ReloadList(updated, updated.ActiveId, true);
             SetSaving(false);
+            if (!closed) Applied?.Invoke();
         }
     }
 }

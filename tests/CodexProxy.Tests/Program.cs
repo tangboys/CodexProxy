@@ -69,8 +69,17 @@ Check(nodes.Single(n => n.Current).Name == "slower" && nodes.Single(n => n.Name 
 fixture.Slow.Status = 503;
 try { await core.ChooseAsync(CoreSession.Auto); throw new Exception("Expected offline rejection"); }
 catch (ProxyException) { Check(true, "all nodes offline rejects selection and desktop launch preparation"); }
+var beforePin = await service.PreviewNodesAsync();
+var liveCurrent = (await core.NodesAsync()).FirstOrDefault(n => n.Current)?.Name ?? Fixture.GoodName;
+await service.DisableAutomaticAsync(Fixture.GoodName);
+Check(service.Profile!.Selected == liveCurrent &&
+    (await core.ApiAsync("/proxies/" + CoreSession.Select))!["now"]!.GetValue<string>() == liveCurrent,
+    "disabling Auto pins the actual current node even when health checks fail");
+Check((await service.PreviewNodesAsync())!.CheckedAt == beforePin!.CheckedAt,
+    "disabling Auto does not invent a new node test timestamp");
 fixture.Slow.Status = 204;
 fixture.Good.Status = 204;
+await core.ChooseAsync(CoreSession.Auto);
 await using (var borrowed = new CoreSession(fixture.DirectoryPath, service.Profile!))
 {
     await borrowed.StartAsync();

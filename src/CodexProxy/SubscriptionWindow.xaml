@@ -12,8 +12,9 @@
           <ListBox.ItemTemplate><DataTemplate><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,8,0"/><TextBlock Grid.Column="1" Text="{Binding StatusText}" Foreground="#2475D4" FontSize="10" VerticalAlignment="Center"/><TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Host}" Foreground="#82909D" FontSize="10" Margin="0,6,0,0" TextTrimming="CharacterEllipsis"/></Grid></DataTemplate></ListBox.ItemTemplate>
         </ListBox>
       </Grid>
-      <StackPanel Grid.Column="2">
+      <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"><StackPanel>
         <DockPanel Margin="0,0,0,16"><Button x:Name="DeleteButton" DockPanel.Dock="Right" Content="{DynamicResource DeleteSubscription}" Click="DeleteClick" FontSize="11" Padding="10,6"/><TextBlock x:Name="EntryTitle" Text="{DynamicResource NewSubscription}" FontSize="15" FontWeight="SemiBold" VerticalAlignment="Center"/></DockPanel>
+        <TextBlock x:Name="DeleteHint" Foreground="#926C2B" FontSize="11" TextWrapping="Wrap" Margin="0,-7,0,12"/>
         <TextBlock Text="{DynamicResource SubscriptionName}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
         <TextBox x:Name="NameText" AutomationProperties.Name="{DynamicResource SubscriptionName}" Margin="0,0,0,17"/>
         <TextBlock Text="{DynamicResource SubscriptionLink}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
@@ -23,7 +24,7 @@
         <TextBlock x:Name="UrlHint" Text="{DynamicResource SavedUrlHint}" Foreground="#82909D" FontSize="11" TextWrapping="Wrap" Margin="0,0,0,18"/>
         <TextBlock Text="{DynamicResource MihomoCoreLabel}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,8"/>
         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox x:Name="CorePath" AutomationProperties.Name="{DynamicResource MihomoCorePath}" ToolTip="{DynamicResource MihomoCoreHint}"/><Button x:Name="BrowseButton" Grid.Column="1" Content="{DynamicResource Browse}" Click="BrowseClick" Margin="8,0,0,0" Padding="12,8"/></Grid>
-      </StackPanel>
+      </StackPanel></ScrollViewer>
     </Grid>
     <TextBlock x:Name="ErrorLabel" Grid.Row="2" Foreground="#926C2B" FontSize="12" TextWrapping="Wrap" Margin="0,16,0,14" Text="{DynamicResource SubscriptionSaveHint}"/>
     <StackPanel Grid.Row="3"><ProgressBar x:Name="Progress" IsIndeterminate="True" Height="3" Foreground="#2475D4" Visibility="Collapsed" Margin="0,0,0,14"/><StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button x:Name="CancelButton" Content="{DynamicResource Done}" Click="CancelClick" Margin="0,0,9,0"/><Button x:Name="SaveButton" Content="{DynamicResource Save}" Click="SaveClick" Margin="0,0,9,0"/><Button x:Name="ActivateButton" Content="{DynamicResource SaveAndEnable}" Style="{StaticResource Primary}" Click="ActivateClick"/></StackPanel></StackPanel>
