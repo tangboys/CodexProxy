@@ -1,7 +1,7 @@
 {
-  "version": "v0.11.0",
+  "version": "v0.11.1",
   "prerelease": true,
-  "published_at": "2026-10-13T04:46:38Z",
-  "notes": "0.11.0 预览版 / Windows x64 preview\n\n- 概览、节点、日志、设置四个页面；主页集中显示连接和用量。\n- 中英文、状态刷新间隔（5/10/30/60 秒）和 Codex 路径移到常规设置，内核选择与版本更新内嵌。\n- 去掉 Tab 虚线焦点框，保留浅蓝键盘反馈。\n- 更新页显示本机/发布版本、渠道、日期和比较；GitHub API 限流时使用公开版本清单，失败保留已知信息并标明来源和时间。\n- 设置查询/扫描可取消，修复返回页面后的状态同步。\n\nCompile/static checks only: Release publish and fixture compilation passed; product, GUI, Mihomo, tests, installer and real Codex calls were not run. Please follow TEST-RESULTS.md in the repository; test real Codex last.\n\nDownload CodexProxy.exe directly. No product ZIP or installer. Bundled .NET and unmodified official Mihomo v1.19.31. Retain the accompanying licenses/notices and corresponding Mihomo source when redistributing. SHA256SUMS.txt lists the assets. Project source is available at tag v0.11.0.",
-  "url": "https://github.com/tangboys/CodexProxy/releases/tag/v0.11.0"
+  "published_at": "2026-10-13T05:20:58Z",
+  "notes": "0.11.1 预览版 / Windows x64 preview\n\n- 修复自动选择勾选无法取消：停止时固定选中或首个预览节点；运行时固定内核实际当前节点，不要求重新测速成功，也不伪造检测时间。\n- 允许删除正在使用的订阅：停止自有代理、清空当前配置，其他订阅保留但不自动启用；保留内核选择，不结束用户 Codex。\n- 删除前取消并等待旧用量/节点检查；删除后立即刷新主界面，防止旧数据回写和订阅复活。外部启动器仍持有内核时拒绝删除。\n- 删除当前订阅后，重新启用订阅并启动代理，保存工作并完全退出旧 Codex，再从启动器打开，以应用新的端口和凭据。\n\nCompile/static checks only. Release publish and fixture compilation passed with no warnings/errors. Fixtures cover pinning despite failed health checks, deletion, shared caches and failed catalog commits, but were not executed. Product, GUI, Mihomo, tests, installer and real Codex calls were not run. Follow TEST-RESULTS.md; test real Codex last.\n\nDownload CodexProxy.exe directly. No product ZIP or installer. Bundled .NET and unmodified official Mihomo v1.19.31. Retain accompanying licenses/notices and corresponding Mihomo source when redistributing. SHA256SUMS.txt lists assets. Project source is available at tag v0.11.1.",
+  "url": "https://github.com/tangboys/CodexProxy/releases/tag/v0.11.1"
 }
